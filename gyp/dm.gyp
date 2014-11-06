@@ -9,6 +9,11 @@
           'dm.gypi',
         ],
         'conditions': [
+          ['skia_enable_experimental_new_skpdf_backend',
+            {
+              'dependencies': [ 'experimental.gyp:NewSkPDFBackend' ],
+            }
+          ],
           ['skia_android_framework', {
               'libraries': [ '-lskia' ],
           }],

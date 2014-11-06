@@ -110,6 +110,23 @@ public:
      */
     void abort();
 
+    // /**
+    //  *  Set document information, for document formats, such as PDF,
+    //  *  that support it.
+    //  */
+    // virtual void setTitle(const SkString&) = 0;
+    // virtual void setAuthor(const SkString&) = 0;
+    // virtual void setSubject(const SkString&) = 0;
+    // virtual void setKeywords(const SkString&) = 0;
+    // virtual void setCreator(const SkString&) = 0;
+
+    // /**
+    //  *  Add metadata in XMP (ISO 16684-1:2012) format, for document
+    //  *  formats, such as PDF, that support it.  This function will
+    //  *  ref() the data.
+    //  */
+    // virtual void setDocumentMetadata(SkData*) = 0;
+
 protected:
     SkDocument(SkWStream*, void (*)(SkWStream*, bool aborted));
     // note: subclasses must call close() in their destructor, as the base class

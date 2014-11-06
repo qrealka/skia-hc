@@ -12,6 +12,10 @@
 #include "SkCommandLineFlags.h"
 #include "SkDocument.h"
 
+#ifdef SK_ENABLE_NEW_SKPDF_BACKEND
+#include "skpdf.h"
+#endif
+
 // The PDF backend is not threadsafe.  If you run dm with --pdf repeatedly, you
 // will quickly find yourself crashed.  (while catchsegv out/Release/dm;; end).
 //
@@ -42,10 +46,19 @@ PDFTask::PDFTask(Reporter* reporter,
 
 namespace {
 
+static SkDocument* CreatePDFDocument(SkWStream* out) {
+#   ifdef SK_ENABLE_NEW_SKPDF_BACKEND
+    if (getenv("SKIA_USE_NEW_SKPDF_BACKEND")) {
+        return skpdf::CreatePDFDocument(out);
+    }
+#   endif
+    return SkDocument::CreatePDF(out);
+}
+
 class SinglePagePDF {
 public:
     SinglePagePDF(SkScalar width, SkScalar height)
-        : fDocument(SkDocument::CreatePDF(&fWriteStream))
+        : fDocument(CreatePDFDocument(&fWriteStream))
         , fCanvas(fDocument->beginPage(width, height)) {}
 
     SkCanvas* canvas() { return fCanvas; }

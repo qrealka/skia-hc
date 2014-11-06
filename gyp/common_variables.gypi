@@ -154,6 +154,8 @@
       'skia_opencl%': 0,
       'skia_force_distance_field_text%': 0,
 
+      'skia_enable_experimental_new_skpdf_backend%': 0,
+
       # These variables determine the default optimization level for different
       # compilers.
       'skia_default_vs_optimization_level': 3, # full (/Ox)
@@ -220,6 +222,8 @@
     'skia_resource_cache_count_limit%': '<(skia_resource_cache_count_limit)',
     'skia_angle%': '<(skia_angle)',
     'skia_poppler_enabled%': '<(skia_poppler_enabled)',
+    'skia_enable_experimental_new_skpdf_backend%':
+      '<(skia_enable_experimental_new_skpdf_backend)',
     'skia_arch_width%': '<(skia_arch_width)',
     'skia_arch_type%': '<(skia_arch_type)',
     'skia_chrome_utils%': '<(skia_chrome_utils)',

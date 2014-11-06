@@ -73,6 +73,57 @@
           ],
         }],
       ],
+    },
+    {
+      'target_name': 'multipage_pdf_profiler',
+      'type': 'executable',
+      'sources': [
+        '../experimental/tools/multipage_pdf_profiler.cpp',
+      ],
+      'dependencies': [
+        'skia_lib.gyp:skia_lib',
+        'pdf.gyp:pdf',
+        'tools.gyp:proc_stats',
+      ],
+      'conditions': [
+        ['skia_enable_experimental_new_skpdf_backend',
+          {
+            'dependencies': [ 'experimental.gyp:NewSkPDFBackend' ],
+          }
+        ],
+      ],
+    },
+    {
+      'target_name': 'NewSkPDFBackend',
+      'type': 'static_library',
+      'variables': { 'skia_pdf_sevenbit_okay%': '' },
+      'include_dirs': [
+        '../include/config',
+        '../include/core',
+        '../src/core',
+        '../src/utils',
+        '../experimental/NewSkPDFBackend/include',
+        '../experimental/NewSkPDFBackend/src',
+      ],
+      'sources': [
+        '../experimental/NewSkPDFBackend/src/skpdf_Device.cpp',
+        '../experimental/NewSkPDFBackend/src/skpdf_Document.cpp',
+        '../experimental/NewSkPDFBackend/src/skpdf_Images.cpp',
+        '../experimental/NewSkPDFBackend/src/skpdf_Name.cpp',
+        '../experimental/NewSkPDFBackend/src/skpdf_Utils.cpp',
+      ],
+      'cflags': [ '--std=c++11' ],  # fancy for-loops
+      'direct_dependent_settings': {
+        'defines':      [ 'SK_ENABLE_NEW_SKPDF_BACKEND' ],
+        'include_dirs': [ '../experimental/NewSkPDFBackend/include', ],
+      },
+      'conditions': [
+        [ 'skia_pdf_sevenbit_okay',
+          {
+            'defines':  [ 'SK_PDF_SEVENBIT_OKAY="<(skia_pdf_sevenbit_okay)"' ],
+          },
+        ],
+      ],
     }
   ],
 }

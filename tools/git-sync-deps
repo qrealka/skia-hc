@@ -19,6 +19,9 @@ Environment Variables:
 
   GIT_SYNC_DEPS_QUIET: if set to non-empty string, suppress messages.
 
+  GIT_SYNC_DEPS_COMPARE_HASH: if set to non-empty string, do not
+  do anything if the DEPS file has not changed.
+
 Git Config:
   To disable syncing of a single repository:
       cd path/to/repository
@@ -27,6 +30,7 @@ Git Config:
   To re-enable sync:
       cd path/to/repository
       git config --unset sync-deps.disable
+
 """
 
 
@@ -164,6 +168,19 @@ def git_sync_deps(deps_file_path, command_line_os_requests, verbose):
   assert git
 
   deps_file_directory = os.path.dirname(deps_file_path)
+
+  deps_file_hash = subprocess.check_output(
+    [git, 'hash-object', deps_file_path])
+  if os.environ.get('GIT_SYNC_DEPS_COMPARE_HASH', False):
+    try:
+      last_deps_file_hash = subprocess.check_output(
+        [git, 'config', 'sync-deps.last'],
+        cwd=(deps_file_directory if deps_file_directory else None))
+      if deps_file_hash.strip() == last_deps_file_hash.strip():
+        return
+    except subprocess.CalledProcessError:
+      pass
+
   deps_file = parse_file_to_dict(deps_file_path)
   dependencies = deps_file['deps'].copy()
   os_specific_dependencies = deps_file.get('deps_os', [])
@@ -189,6 +206,9 @@ def git_sync_deps(deps_file_path, command_line_os_requests, verbose):
     recursive_path = os.path.join(deps_file_directory, directory, 'DEPS')
     git_sync_deps(recursive_path, command_line_os_requests, verbose)
 
+  subprocess.check_call(
+    [git, 'config', 'sync-deps.last', deps_file_hash],
+    cwd=(deps_file_directory if deps_file_directory else None))
 
 def multithread(function, list_of_arg_lists):
   # for args in list_of_arg_lists:
