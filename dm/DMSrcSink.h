@@ -201,6 +201,15 @@ private:
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
+class CppSink : public Sink {
+public:
+    CppSink() {}
+
+    Error draw(const Src& src, SkBitmap*, SkWStream*, SkString*) const override;
+    int enclave() const override { return kAnyThread_Enclave; }
+    const char* fileExtension() const override { return "cpp"; }
+};
+
 class NullSink : public Sink {
 public:
     NullSink() {}

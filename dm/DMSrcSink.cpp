@@ -10,6 +10,7 @@
 #include "SkAndroidCodec.h"
 #include "SkCodec.h"
 #include "SkCommonFlags.h"
+#include "SkCPlusPlusCanvas.h"
 #include "SkData.h"
 #include "SkDocument.h"
 #include "SkError.h"
@@ -776,6 +777,17 @@ SkISize SKPSrc::size() const {
 }
 
 Name SKPSrc::name() const { return SkOSPath::Basename(fPath.c_str()); }
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+Error CppSink::draw(const Src& src, SkBitmap*, SkWStream* o, SkString*) const {
+    Name name = src.name();
+    o->writeText("// ");
+    o->write(name.c_str(), name.size());
+    o->writeText("\n");
+    SkAutoTDelete<SkCanvas> canvas(SkCreateCPlusPlusCanvas(o, src.size()));
+    return src.draw(canvas);
+}
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
