@@ -14,6 +14,90 @@
 #include "SkShader.h"
 #include "SkStream.h"
 
+class Thing {
+public:
+    Thing(SkWStream* out) : fOut(out), fIndex(0) {}
+    void printfStatement(const char format[], ...);
+    SkString getPaint(const SkPaint&);
+    int nextIndex() { return ++fIndex; }
+    SkString printMatrix(const SkMatrix& m);
+
+private:
+    SkTDArray<SkPaint> fPaints;
+    SkWStream* fOut;
+    int fIndex;
+};
+
+SkString Thing::printMatrix(const SkMatrix& m) {
+    SkString name = SkStringPrintf("matrix%d", this->nextIndex());
+    if (m.isIdentity()) {
+        this->printfStatement("SkMatrix %s = SkMatrix::I();", name.c_str());
+        return;
+    } else if (m.isScaleTranslate()) {
+        SkScalar dx = m.getTranslateX();
+        SkScalar dy= m.getTranslateY();
+        if (dx != 0.0f || dy != 0.0f) {
+            this->printfStatement("SkMatrix %s = SkMatrix::MakeTrans(f(%.7g), f(%.7g));",
+                       name.c_str(), dx, dy);
+        } else {
+            this->printfStatement("SkMatrix %s = SkMatrix::I();", name.c_str());
+        }
+        SkScalar sx = m.getScaleX();
+        SkScalar sy = m.getScaleY();
+        if (sx != 1.0f || sy != 1.0f) {
+            sk_fprintf( o, "    %s.preScale(f(%.7g), f(%.7g));", name.c_str(), sx, sy);
+        }
+        return;
+    }
+    this->printfStatement("SkMatrix %s;", name.c_str());
+    this->printfStatement("%s.setAll(\n"
+    this->printfStatement("        f(%.7g), f(%.7g), f(%.7g),\n",
+                          , name.c_str());
+                          m.getScaleX(), m.getSkewX(), m.getTranslateX(),
+                          m.getSkewY(), m.getScaleY(), m.getTranslateY(),
+                          m.getPerspX(), m.getPerspY(), m[SkMatrix::kMPersp2]);
+    this->printfStatement("        f(%.7g), f(%.7g), f(%.7g),\n",
+    this->printfStatement("        f(%.7g), f(%.7g), f(%.7g));\n",
+
+}
+
+
+// class SkShader {
+//     virtual doThing(Thing*) = 0;
+// };
+
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef SK_BUILD_FOR_WIN
+#define VSNPRINTF(B, S, F, A) _vsnprintf_s(B, S, _TRUNCATE, F, A)
+#else
+#define VSNPRINTF(B, S, F, A) vsnprintf(B, S, F, A)
+#endif
+void Thing::printfStatement(const char format[], ...) {
+    SkAssertResult(fOut->writeText("    "));
+    static const size_t kBufferSize = 1024;
+    char buffer[kBufferSize];
+    va_list args;
+    va_start(args, format);
+    int written = VSNPRINTF(buffer, kBufferSize, format, args);
+    va_end(args);
+    if (written < kBufferSize) {
+        SkAssertResult(fOut->write(buffer, written));
+    } else {
+        // vsnprintf wants to write a '\0', but doesn't count it in
+        // it's return value.
+        size_t size = SkToSizeT(written + 1);
+        SkAutoTMalloc<char> mallocedBuffer(size);
+        va_start(args, format);
+        written = VSNPRINTF(mallocedBuffer.get(), size, format, args);
+        va_end(args);
+        SkASSERT(SkToSizeT(written + 1) == size);  // nothing changed.
+        SkAssertResult(this->write(mallocedBuffer.get(), SkToSizeT(written)));
+    }
+    SkAssertResult(fOut->writeText("\n"));
+}
+#undef VSNPRINTF
+
 namespace {
 class CppCanvas : public SkCanvas {
 public:
