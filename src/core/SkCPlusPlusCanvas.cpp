@@ -13,20 +13,30 @@
 #include "SkPaintDefaults.h"
 #include "SkShader.h"
 #include "SkStream.h"
+#include "SkTDArray.h"
 
+#if 0
 class Thing {
 public:
     Thing(SkWStream* out) : fOut(out), fIndex(0) {}
     void printfStatement(const char format[], ...);
     SkString getPaint(const SkPaint&);
     int nextIndex() { return ++fIndex; }
-    SkString printMatrix(const SkMatrix& m);
+    SkString getMatrix(const SkMatrix&);
+    SkString rect(const SkRect&);
+    void printMatrix(const SkMatrix&);
 
 private:
     SkTDArray<SkPaint> fPaints;
     SkWStream* fOut;
     int fIndex;
 };
+
+
+SkString Thing::rect(const SkRect& r) {
+    return SkStringPrintf("SkRect::MakeLTRB(f(%.7g), f(%.7g), f(%.7g), f(%.7g))",
+                          r.left(), r.top(), r.right(), r.bottom());
+}
 
 SkString Thing::printMatrix(const SkMatrix& m) {
     SkString name = SkStringPrintf("matrix%d", this->nextIndex());
@@ -98,6 +108,8 @@ void Thing::printfStatement(const char format[], ...) {
 }
 #undef VSNPRINTF
 
+#endif // 0
+
 namespace {
 class CppCanvas : public SkCanvas {
 public:
@@ -105,9 +117,9 @@ public:
     ~CppCanvas();
 
     void willSave() override;
-    SkCanvas::SaveLayerStrategy willSaveLayer(const SkRect*,
-                                    const SkPaint*,
-                                    SkCanvas::SaveFlags) override;
+    // SkCanvas::SaveLayerStrategy willSaveLayer(const SkRect*,
+    //                                 const SkPaint*,
+    //                                 uint32_t) override;
     void willRestore() override;
     void didRestore() override;
 
@@ -115,7 +127,7 @@ public:
     void didSetMatrix(const SkMatrix&) override;
 
     void onDrawDRRect(const SkRRect&, const SkRRect&, const SkPaint&) override;
-    void onDrawDrawable(SkDrawable*) override;
+    // void onDrawDrawable(SkDrawable*) override;
     void onDrawText(const void* text,
                     size_t byteLength,
                     SkScalar x,
@@ -162,23 +174,23 @@ public:
                           const SkRect* src,
                           const SkRect& dst,
                           const SkPaint*,
-                          DrawBitmapRectFlags flags) override;
+                          SrcRectConstraint) override;
     void onDrawImage(const SkImage*,
                      SkScalar left,
                      SkScalar top,
                      const SkPaint*) override;
-    void onDrawImageRect(const SkImage*,
-                         const SkRect* src,
-                         const SkRect& dst,
-                         const SkPaint*) override;
+    // void onDrawImageRect(const SkImage*,
+    //                      const SkRect* src,
+    //                      const SkRect& dst,
+    //                      const SkPaint*) override;
     void onDrawBitmapNine(const SkBitmap&,
                           const SkIRect& center,
                           const SkRect& dst,
                           const SkPaint*) override;
-    void onDrawSprite(const SkBitmap&,
-                      int left,
-                      int top,
-                      const SkPaint*) override;
+    // void onDrawSprite(const SkBitmap&,
+    //                   int left,
+    //                   int top,
+    //                   const SkPaint*) override;
     void onDrawVertices(VertexMode vmode,
                         int vertexCount,
                         const SkPoint vertices[],
@@ -204,9 +216,9 @@ public:
                        const SkMatrix*,
                        const SkPaint*) override;
 
-    void beginCommentGroup(const char*) override;
-    void addComment(const char*, const char*) override;
-    void endCommentGroup() override;
+    // void beginCommentGroup(const char*) override;
+    // void addComment(const char*, const char*) override;
+    // void endCommentGroup() override;
 
     SkSurface* onNewSurface(const SkImageInfo&,
                             const SkSurfaceProps&) override {
@@ -489,7 +501,7 @@ static void set_flag(SkWStream* o, const char* n, uint32_t flags) {
         { SkPaint::kEmbeddedBitmapText_Flag   , "setEmbeddedBitmapText"   },
         { SkPaint::kAutoHinting_Flag          , "setAutohinted"           },
         { SkPaint::kVerticalText_Flag         , "setVerticalText"         },
-        { SkPaint::kDistanceFieldTextTEMP_Flag, "setDistanceFieldTextTEMP"},
+        // { SkPaint::kDistanceFieldTextTEMP_Flag, "setDistanceFieldTextTEMP"},
     };
     for (size_t i = 0; i < SK_ARRAY_COUNT(flagList); ++i) {
         if (SkToBool(flagList[i].flag & nonDefaultFlags)) {
@@ -504,7 +516,7 @@ static void set_flag(SkWStream* o, const char* n, uint32_t flags) {
 ////////////////////////////////////////////////////////////////////////////////
 
 SkCanvas* SkCreateCPlusPlusCanvas(SkWStream* o, SkISize s) {
-    return SkNEW_ARGS(CppCanvas, (o, s));
+    return new CppCanvas(o, s);
 }
 
 CppCanvas::CppCanvas(SkWStream* out, SkISize size)
@@ -523,28 +535,28 @@ void CppCanvas::willSave() {
     fOut->writeText("    canvas->save();\n");
 }
 
-SkCanvas::SaveLayerStrategy CppCanvas::willSaveLayer(const SkRect* r,
-                                                     const SkPaint* p,
-                                                     SkCanvas::SaveFlags) {
-    SkString paint, rect;
-    if (p) {
-        paint = this->serializePaint(*p);
-        paint.prepend("&");
-    } else {
-        paint = "NULL";
-    }
-    if (r) {
-        SkString rval = serialize_rect(*r);
-        rect = SkStringPrintf("rect%d", ++fTmpIndex);
-        sk_fprintf(fOut, "    SkRect %s = %s;\n", rect.c_str(), rval.c_str());
-        rect.prepend("&");
-    } else {
-        rect = "NULL";
-    }
-    sk_fprintf(fOut, "    canvas->saveLayer(%s, %s);\n",
-                    rect.c_str(), paint.c_str());
-    return SkCanvas::kNoLayer_SaveLayerStrategy;
-}
+// SkCanvas::SaveLayerStrategy CppCanvas::willSaveLayer(const SkRect* r,
+//                                                      const SkPaint* p,
+//                                                      SkCanvas::SaveFlags) {
+//     SkString paint, rect;
+//     if (p) {
+//         paint = this->serializePaint(*p);
+//         paint.prepend("&");
+//     } else {
+//         paint = "NULL";
+//     }
+//     if (r) {
+//         SkString rval = serialize_rect(*r);
+//         rect = SkStringPrintf("rect%d", ++fTmpIndex);
+//         sk_fprintf(fOut, "    SkRect %s = %s;\n", rect.c_str(), rval.c_str());
+//         rect.prepend("&");
+//     } else {
+//         rect = "NULL";
+//     }
+//     sk_fprintf(fOut, "    canvas->saveLayer(%s, %s);\n",
+//                     rect.c_str(), paint.c_str());
+//     return SkCanvas::kNoLayer_SaveLayerStrategy;
+// }
 
 void CppCanvas::willRestore() {}
 
@@ -595,9 +607,9 @@ void CppCanvas::onDrawDRRect(const SkRRect& outer,
     //                 outerRect, innerRect, paint);
 }
 
-void CppCanvas::onDrawDrawable(SkDrawable* drawable) {
-    sk_fprintf(fOut, "    SkASSERT(false);  // NOT YET\n");
-}
+// void CppCanvas::onDrawDrawable(SkDrawable* drawable) {
+//     sk_fprintf(fOut, "    SkASSERT(false);  // NOT YET\n");
+// }
 
 void CppCanvas::onDrawText(const void* text,
                            size_t byteLength,
@@ -715,7 +727,7 @@ void CppCanvas::onDrawBitmapRect(const SkBitmap&,
                                  const SkRect* src,
                                  const SkRect& dst,
                                  const SkPaint*,
-                                 DrawBitmapRectFlags flags) {
+                                 SrcRectConstraint) {
     sk_fprintf(fOut, "    SkASSERT(false);  // NOT YET\n");
 }
 
@@ -726,12 +738,12 @@ void CppCanvas::onDrawImage(const SkImage*,
     sk_fprintf(fOut, "    SkASSERT(false);  // NOT YET\n");
 }
 
-void CppCanvas::onDrawImageRect(const SkImage*,
-                                const SkRect* src,
-                                const SkRect& dst,
-                                const SkPaint*) {
-    sk_fprintf(fOut, "    SkASSERT(false);  // NOT YET\n");
-}
+// void CppCanvas::onDrawImageRect(const SkImage*,
+//                                 const SkRect* src,
+//                                 const SkRect& dst,
+//                                 const SkPaint*) {
+//     sk_fprintf(fOut, "    SkASSERT(false);  // NOT YET\n");
+// }
 
 void CppCanvas::onDrawBitmapNine(const SkBitmap&,
                                  const SkIRect& center,
@@ -740,12 +752,12 @@ void CppCanvas::onDrawBitmapNine(const SkBitmap&,
     sk_fprintf(fOut, "    SkASSERT(false);  // NOT YET\n");
 }
 
-void CppCanvas::onDrawSprite(const SkBitmap&,
-                             int left,
-                             int top,
-                             const SkPaint*) {
-    sk_fprintf(fOut, "    SkASSERT(false);  // NOT YET\n");
-}
+// void CppCanvas::onDrawSprite(const SkBitmap&,
+//                              int left,
+//                              int top,
+//                              const SkPaint*) {
+//     sk_fprintf(fOut, "    SkASSERT(false);  // NOT YET\n");
+// }
 
 void CppCanvas::onDrawVertices(VertexMode vmode,
                                int vertexCount,
@@ -787,17 +799,6 @@ void CppCanvas::onDrawPicture(const SkPicture*,
     sk_fprintf(fOut, "    SkASSERT(false);  // NOT YET\n");
 }
 
-void CppCanvas::beginCommentGroup(const char* g) {
-    sk_fprintf(fOut, "    canvas->beginCommentGroup(\"%s\");\n", g);
-}
-
-void CppCanvas::addComment(const char* x, const char* y) {
-    sk_fprintf(fOut, "    canvas->addComment(\"%s\", \"%s\");\n", x, y);
-}
-
-void CppCanvas::endCommentGroup() {
-    sk_fprintf(fOut, "    canvas->endCommentGroup();\n");
-}
 
 SkString CppCanvas::serializePaint(const SkPaint& p) {
     int index = fPaints.find(p);
@@ -806,7 +807,7 @@ SkString CppCanvas::serializePaint(const SkPaint& p) {
     }
     SkString name = SkStringPrintf("paint%u", fPaints.count());
     const char* n = name.c_str();
-    (void)SkNEW_PLACEMENT_ARGS(fPaints.append(), SkPaint, (p));
+    new(fPaints.append()) SkPaint(p);
     sk_fprintf(fOut, "    SkPaint %s;\n", n);
     if (SkPaintDefaults_TextSize != p.getTextSize()) {
         sk_fprintf(fOut, "    %s.setTextSize(f(%.7g));\n", n, p.getTextSize());

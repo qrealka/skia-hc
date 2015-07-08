@@ -208,6 +208,9 @@ public:
     Error draw(const Src& src, SkBitmap*, SkWStream*, SkString*) const override;
     int enclave() const override { return kAnyThread_Enclave; }
     const char* fileExtension() const override { return "cpp"; }
+    SinkFlags flags() const override {
+        return SinkFlags{ SinkFlags::kVector,  SinkFlags::kDirect }; 
+    }
 };
 
 class NullSink : public Sink {
