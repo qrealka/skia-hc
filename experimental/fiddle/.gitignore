@@ -1,0 +1,5 @@
+build
+skia.h
+*.gch
+*.o
+draw
