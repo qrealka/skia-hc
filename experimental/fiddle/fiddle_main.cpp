@@ -15,57 +15,6 @@
 SkBitmap source;
 SkImage* image(nullptr);
 
-const char* FLAGS_source(nullptr);
-int32_t FLAGS_width(256);
-int32_t FLAGS_height(256);
-bool FLAGS_gpu(false);
-bool FLAGS_noraster(false);
-bool FLAGS_pdf(false);
-
-static void help() {
-    const char options[] =
-            "\nOptions:\n"
-            "    --width WIDTH   Set the canvas width (default is 256).\n"
-            "    --height HEIGHT Set the canvas height (default is 256).\n"
-            "    --source PATH   Set the source image file.\n"
-            "    --noraster      Disable the raster backend.\n"
-            "    --gpu           Enable the GPU backend.\n"
-            "    --pdf           Enable the PDF backend.\n\n";
-    fputs(options, stderr);
-    exit(2);
-}
-
-static void parse_flags(int, char** argv) {
-    ++argv; // skip argv[0]
-    while (*argv) {  // argv is always NULL-terminated
-        if (0 == strcmp(*argv, "--width")) {
-            if (!*++argv) {
-                help();
-            }
-            FLAGS_width = atoi(*argv);
-        } else if (0 == strcmp(*argv, "--height")) {
-            if (!*++argv) {
-                help();
-            }
-            FLAGS_height = atoi(*argv);
-        } else if (0 == strcmp(*argv, "--source")) {
-            if (!*++argv) {
-                help();
-            }
-            FLAGS_source = *argv;
-        } else if (0 == strcmp(*argv, "--gpu")) {
-            FLAGS_gpu = true;
-        } else if (0 == strcmp(*argv, "--noraster")) {
-            FLAGS_noraster = true;
-        } else if (0 == strcmp(*argv, "--pdf")) {
-            FLAGS_pdf = true;
-        } else {
-            help();
-        }
-        ++argv;
-    }
-}
-
 static void encode_to_base64(const void* data, size_t size, FILE* out) {
     const uint8_t* input = reinterpret_cast<const uint8_t*>(data);
     const uint8_t* end = &input[size];
@@ -128,10 +77,10 @@ static GrContext* create_mesa_grcontext() {
     return backend ? GrContext::Create(kOpenGL_GrBackend, backend) : nullptr;
 }
 
-int main(int argc, char** argv) {
-    parse_flags(argc, argv);
-    if (FLAGS_source) {
-        SkAutoTUnref<SkData> data(SkData::NewFromFileName(FLAGS_source));
+int main() {
+    const DrawOptions options = GetDrawOptions()
+    if (options.source) {
+        SkAutoTUnref<SkData> data(SkData::NewFromFileName(options.source));
         if (!data) {
             perror("Unable to open the source image file.");
         } else {
@@ -142,15 +91,14 @@ int main(int argc, char** argv) {
             }
         }
     }
-    SkISize size = SkISize::Make(FLAGS_width, FLAGS_height);
     SkAutoTUnref<SkData> rasterData, gpuData, pdfData;
-    if (!FLAGS_noraster) {
+    if (options.raster) {
         SkAutoTUnref<SkSurface> rasterSurface(
-                SkSurface::NewRaster(SkImageInfo::MakeN32Premul(size)));
+                SkSurface::NewRaster(SkImageInfo::MakeN32Premul(options.size)));
         draw(rasterSurface->getCanvas());
         rasterData.reset(encode_snapshot(rasterSurface));
     }
-    if (FLAGS_gpu) {
+    if (options.gpu) {
         OSMesaContext osMesaContext = create_osmesa_context();
         SkAutoTUnref<GrContext> grContext(create_mesa_grcontext());
         if (!grContext) {
@@ -160,7 +108,7 @@ int main(int argc, char** argv) {
                     SkSurface::NewRenderTarget(
                             grContext,
                             SkSurface::kNo_Budgeted,
-                            SkImageInfo::MakeN32Premul(size)));
+                            SkImageInfo::MakeN32Premul(options.size)));
             if (!surface) {
                 fputs("Unable to get render surface.\n", stderr);
                 exit(1);
@@ -172,10 +120,10 @@ int main(int argc, char** argv) {
             OSMesaDestroyContext(osMesaContext);
         }
     }
-    if (FLAGS_pdf) {
+    if (options.pdf) {
         SkDynamicMemoryWStream pdfStream;
         SkAutoTUnref<SkDocument> document(SkDocument::CreatePDF(&pdfStream));
-        draw(document->beginPage(FLAGS_width, FLAGS_height));
+        draw(document->beginPage(options.size.width(), options.size.height()));
         document->close();
         pdfData.reset(pdfStream.copyToData());
     }

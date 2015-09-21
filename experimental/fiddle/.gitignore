@@ -2,4 +2,6 @@ build
 skia.h
 *.gch
 *.o
+*.so
 draw
+secwrap

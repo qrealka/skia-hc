@@ -12,6 +12,17 @@
 extern SkBitmap source;
 extern SkImage* image;
 
+struct DrawOptions {
+    DrawOptions(int w, int h, bool r, bool g, bool p, const char* s)
+        : size(SkISize::Make(w, h)), raster(r), gpu(g), pdf(p), source(s) {}
+    SkISize size;
+    bool raster;
+    bool gpu;
+    bool pdf;
+    const char* source;
+};
+
+extern DrawOptions GetDrawOptions();
 extern void draw(SkCanvas*);
 
 #endif  // fiddle_main_DEFINED

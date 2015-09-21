@@ -5,6 +5,9 @@
  * found in the LICENSE file.
  */
 #include "fiddle_main.h"
+DrawOptions GetDrawOptions() {
+    return DrawOptions(256, 256, true, false, false, "color_wheel.png");
+}
 void draw(SkCanvas* canvas) {
     canvas->clear(SK_ColorWHITE);
     SkMatrix matrix;
