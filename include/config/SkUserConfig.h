@@ -154,3 +154,4 @@
 //#define SK_PDF_USE_PATHOPS_CLIPPING
 
 #endif
+#define SK_PDF_IMAGE_STATS
