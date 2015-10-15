@@ -272,6 +272,14 @@ public:
     SinkFlags flags() const override { return SinkFlags{ SinkFlags::kVector, SinkFlags::kDirect }; }
 };
 
+class TextSink : public Sink {
+public:
+    Error draw(const Src& src, SkBitmap*, SkWStream* o, SkString*) const override;
+    int enclave() const override { return kAnyThread_Enclave; }
+    const char* fileExtension() const override { return "txt"; }
+    SinkFlags flags() const override { return SinkFlags{ SinkFlags::kVector, SinkFlags::kDirect }; }
+};
+
 class SVGSink : public Sink {
 public:
     SVGSink();
@@ -327,6 +335,12 @@ public:
     Error draw(const Src&, SkBitmap*, SkWStream*, SkString*) const override;
 private:
     bool fCache;
+};
+
+class ViaTextRemote : public Via {
+public:
+    ViaTextRemote(Sink* sink) : Via(sink) {}
+    Error draw(const Src&, SkBitmap*, SkWStream*, SkString*) const override;
 };
 
 class ViaSerialization : public Via {

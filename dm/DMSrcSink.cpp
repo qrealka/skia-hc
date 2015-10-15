@@ -25,6 +25,7 @@
 #include "SkRemote.h"
 #include "SkSVGCanvas.h"
 #include "SkStream.h"
+#include "SkTextRemoteEncoder.h"
 #include "SkTLogic.h"
 #include "SkXMLWriter.h"
 #include "SkSwizzler.h"
@@ -39,6 +40,18 @@ static bool lazy_decode_bitmap(const void* src, size_t size, SkBitmap* dst) {
 }
 
 namespace DM {
+
+Error TextSink::draw(const Src& src, SkBitmap*, SkWStream* o, SkString*) const {
+    o->writeText("SkRemote::Text ");
+    o->writeDecAsText(src.size().width());
+    o->writeText(" ");
+    o->writeDecAsText(src.size().height());
+    o->writeText("\n");
+    SkRemote::TextEncoder textEncoder(o);
+    SkAutoTDelete<SkRemote::Encoder> cache(SkRemote::NewCachingEncoder(&textEncoder));
+    SkAutoTDelete<SkCanvas> canvas(SkRemote::NewCanvas(cache));
+    return src.draw(canvas);
+}
 
 GMSrc::GMSrc(skiagm::GMRegistry::Factory factory) : fFactory(factory) {}
 
@@ -1069,6 +1082,25 @@ Error ViaRemote::draw(const Src& src, SkBitmap* bitmap, SkWStream* stream, SkStr
                                                         : nullptr);
         SkAutoTDelete<SkCanvas> canvas(SkRemote::NewCanvas(cache ? cache : decoder));
         return src.draw(canvas);
+    });
+}
+
+Error ViaTextRemote::draw(const Src& src, SkBitmap* bitmap, SkWStream* stream, SkString* log) const {
+    SkDynamicMemoryWStream buffer;
+    SkRemote::TextEncoder textEncoder(&buffer);
+    {
+        SkAutoTDelete<SkRemote::Encoder> cache(SkRemote::NewCachingEncoder(&textEncoder));
+        SkAutoTDelete<SkCanvas> canvas(SkRemote::NewCanvas(cache));
+        Error e = src.draw(canvas);
+        if (!e.isEmpty()) {
+            return e;
+        }
+    }
+    SkAutoTDelete<SkStreamAsset> asset(buffer.detachAsStream());
+    return draw_to_canvas(fSink, bitmap, stream, log, src.size(), [&](SkCanvas* canvas) {
+        SkAutoTDelete<SkRemote::Encoder> decoder(SkRemote::NewDecoder(canvas));
+        return SkRemote::TextDecode(decoder, asset.get())
+            ? "" : "SkRemote::TextDecode() failed.";
     });
 }
 

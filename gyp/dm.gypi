@@ -13,6 +13,7 @@
     '../src/images',
     '../src/lazy',
     '../src/pipe/utils/',
+    '../src/remote',
     '../src/utils',
     '../src/utils/debugger',
     '../tests',
@@ -46,6 +47,8 @@
     '../src/utils/debugger/SkDebugCanvas.cpp',
     '../src/utils/debugger/SkDrawCommand.cpp',
     '../src/utils/debugger/SkObjectParser.cpp',
+
+    '../src/remote/SkTextRemoteEncoder.cpp',
   ],
   'conditions': [
     [ 'skia_gpu == 1', {

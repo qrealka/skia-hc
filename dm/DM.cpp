@@ -636,6 +636,7 @@ static Sink* create_sink(const char* tag) {
         SINK("svg",  SVGSink);
         SINK("null", NullSink);
         SINK("xps",  XPSSink);
+        SINK("txt",  TextSink);
     }
 #undef SINK
     return nullptr;
@@ -652,6 +653,7 @@ static Sink* create_via(const char* tag, Sink* wrapped) {
     VIA("tiles_rt",  ViaTiles, 256, 256, new SkRTreeFactory, wrapped);
     VIA("remote",       ViaRemote, false, wrapped);
     VIA("remote_cache", ViaRemote, true,  wrapped);
+    VIA("text",         ViaTextRemote,    wrapped);
 
     if (FLAGS_matrix.count() == 4) {
         SkMatrix m;
