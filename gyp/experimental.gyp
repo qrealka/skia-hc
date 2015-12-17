@@ -23,5 +23,30 @@
         ],
       },
     },
+    {
+      'target_name': 'protobuff',
+      'type': 'executable',
+      'include_dirs': [
+        #TODO(halcanary): fix this
+        '<!@(printf %s "$HOME")/local/include',
+        '../experimental/protobuff',
+        '../src/core',
+        '../include/private',
+      ],
+      'dependencies': [
+        'etc1.gyp:libetc1',
+        'libpng.gyp:libpng',
+        'skia_lib.gyp:skia_lib',
+      ],
+      'libraries' : [
+        #TODO(halcanary): fix this
+        '<!@(printf %s "$HOME")/local/lib/libprotobuf.a'
+      ],
+      'sources': [
+        '../experimental/protobuff/main.cpp',
+        '../experimental/protobuff/ProtocolRemoteEncoder.cpp',
+        '../experimental/protobuff/skia.pb.cc',
+      ],
+    },
   ],
 }

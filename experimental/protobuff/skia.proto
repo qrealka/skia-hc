@@ -1,0 +1,518 @@
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
+syntax = "proto3";
+
+package SkProto;
+
+message Matrix {
+    float scale_x = 1;
+    float skew_x  = 2;
+    float trans_x = 3;
+    float skew_y  = 4;
+    float scale_y = 5;
+    float trans_y = 6;
+    float persp_0 = 7;
+    float persp_1 = 8;
+    float persp_2 = 9;
+}
+
+enum FilterQuality {
+    FILTER_QUALITY_NONE   = 0;
+    FILTER_QUALITY_LOW    = 1;
+    FILTER_QUALITY_MEDIUM = 2;
+    FILTER_QUALITY_HIGH   = 3;
+}
+
+enum AntiAlias {
+    ANTIALIAS_OFF = 0;
+    ANTIALIAS_ON  = 1;
+}
+
+enum Dither {
+    DITHER_OFF = 0;
+    DITHER_ON  = 1;
+}
+
+message Misc {
+    fixed32       color          = 1;
+    FilterQuality filter_quality = 2;
+    AntiAlias     anti_alias     = 3;
+    Dither        dither         = 4;
+}
+
+message Rect {
+    float left   = 1;
+    float top    = 2;
+    float right  = 3;
+    float bottom = 4;
+}
+
+message Vector {
+    float x = 1;
+    float y = 2;
+}
+
+message Point {
+    float x = 1;
+    float y = 2;
+}
+
+message RoundRect {
+    float left   = 1;
+    float top    = 2;
+    float right  = 3;
+    float bottom = 4;
+    float upper_left_x  = 5;
+    float upper_left_y  = 6;
+    float upper_right_x = 7;
+    float upper_right_y = 8;
+    float lower_right_x = 9;
+    float lower_right_y = 10;
+    float lower_left_x  = 11;
+    float lower_left_y  = 12;
+}
+
+message Path {
+    enum FillType {
+        FILL_TYPE_WINDING          = 0;
+        FILL_TYPE_EVEN_ODD         = 1;
+        FILL_TYPE_INVERSE_WINDING  = 2;
+        FILL_TYPE_INVERSE_EVEN_ODD = 3;
+    };
+    FillType fill_type = 1;
+    enum Direction {
+        DIRECTION_CW  = 0;
+        DIRECTION_CCW = 1;
+    }
+    message RectPath {
+        Rect      rect      = 1;
+        Direction direction = 2;
+    }
+    message OvalPath {
+        Rect      rect      = 1;
+        Direction direction = 2;
+    }
+    message RoundRectPath {
+        RoundRect round_rect = 1;
+        Direction direction  = 2;
+    }
+    message Move {
+        float end_x = 1;
+        float end_y = 2;
+    }
+    message Line {
+        float end_x = 1;
+        float end_y = 2;
+    }
+    message Quad {
+        float control_x = 1;
+        float control_y = 2;
+        float end_x = 3;
+        float end_y = 4;
+    }
+    message Conic {
+        float control_x = 1;
+        float control_y = 2;
+        float end_x     = 3;
+        float end_y     = 4;
+        float weight    = 5;
+    }
+    message Cubic {
+        float control_1_x = 1;
+        float control_1_y = 2;
+        float control_2_x = 3;
+        float control_2_y = 4;
+        float end_x       = 5;
+        float end_y       = 6;
+    }
+    message Close {}
+    message Done {}
+    message Action {
+        oneof action {
+            Move  move  = 1;
+            Line  line  = 2;
+            Quad  quad  = 3;
+            Conic conic = 4;
+            Cubic cubic = 5;
+            Close close = 6;
+            Done  done  = 7;
+        }
+    }
+    message GenericPath {
+        repeated Action action = 1;
+    };
+    oneof path {
+        RectPath rect_path = 2;
+        OvalPath oval_path = 3;
+        RoundRectPath round_rect_path = 4;
+        GenericPath generic_path = 5;
+    }
+}
+
+message Stroke {
+    float width = 1;
+    float miter = 2;
+    enum Cap {
+        BUTT_CAP   = 0;
+        ROUND_CAP  = 1;
+        SQUARE_CAP = 2;
+    }
+    Cap  cap    = 3;
+    enum Join {
+        MITER_JOIN = 0;
+        ROUND_JOIN = 1;
+        BEVEL_JOIN = 2;
+    }
+    Join join   = 4;
+}
+
+message Font {
+    AntiAlias anti_alias = 1;
+    enum UnderlineText {
+        UNDERLINE_OFF = 0;
+        UNDERLINE_ON  = 1;
+    }
+    UnderlineText underline_text = 2;
+    enum StrikeThruText {
+        STRIKE_THRU_TEXT_OFF = 0;
+        STRIKE_THRU_TEXT_ON  = 1;
+    }
+    StrikeThruText strike_thru_text = 3;
+    enum FakeBoldText {
+        FAKE_BOLD_TEXT_OFF = 0;
+        FAKE_BOLD_TEXT_ON  = 1;
+    }
+    FakeBoldText fake_bold_text = 4;
+    enum LinearText {
+        LINEAR_TEXT_ON = 0;
+        LINEAR_TEXT_OFF = 1;
+    }
+    LinearText             linear_text           = 5;
+    enum SubpixelText {
+        SUBPIXEL_TEXT_ON  = 0;
+        SUBPIXEL_TEXT_OFF = 1;
+    }
+    SubpixelText           subpixel_text         = 6;
+    enum DevKernText {
+        DEV_KERN_TEXT_ON  = 0;
+        DEV_KERN_TEXT_OFF = 1;
+    }
+
+    DevKernText            dev_kern_text         = 7;
+    enum LCDRenderText {
+        LCDRENDER_TEXT_ON  = 0;
+        LCDRENDER_TEXT_OFF = 1;
+    }
+    LCDRenderText          lcd_render_Text       = 8;
+    enum EmbeddedBitmapText {
+        EMBEDDED_BITMAP_TEXT_ON  = 0;
+        EMBEDDED_BITMAP_TEXT_OFF = 1;
+    }
+    EmbeddedBitmapText     embedded_bitmap_text  = 9;
+    enum AutoHinting {
+        AUTO_HINTING_ON  = 0;
+        AUTO_HINTING_OFF = 1;
+    }
+    AutoHinting            auto_hinting          = 10;
+    enum VerticalText {
+        VERTICAL_TEXT_ON  = 0;
+        VERTICAL_TEXT_OFF = 1;
+    }
+    VerticalText           vertical_text         = 11;
+    enum GenA8FromLCD {
+        GEN_A8FROM_LCD_ON  = 0;
+        GEN_A8FROM_LCD_OFF = 1;
+    }
+    GenA8FromLCD           gen_a8_from_lcd       = 12;
+    float                 size    = 13;
+    float                 scale_x = 14;
+    float                 skew_x  = 15;
+    enum Align {
+        ALIGN_LEFT = 0;
+        ALIGN_CENTER = 1;
+        ALIGN_RIGHT = 2;
+    }
+    Align align = 16;
+    enum Hinting {
+        NORMAL_HINTING = 0;
+        NO_HINTING     = 1;
+        SLIGHT_HINTING = 2;
+        FULL_HINTING   = 3;
+    }
+    Hinting hinting = 17;
+}
+
+message Xfermode {
+    message ClearMode {}
+    message Src {}
+    message Dst {}
+    message SrcOver {}
+    message DstOver {}
+    message SrcIn {}
+    message DstIn {}
+    message SrcOut {}
+    message DstOut {}
+    message SrcATop {}
+    message DstATop {}
+    message Xor {}
+    message Plus {}
+    message Modulate {}
+    message Screen {}
+    message Overlay {}
+    message Darken {}
+    message Lighten {}
+    message ColorDodge {}
+    message ColorBurn {}
+    message HardLight {}
+    message SoftLight {}
+    message Difference {}
+    message Exclusion {}
+    message Multiply {}
+    message Hue {}
+    message Saturation {}
+    message Color {}
+    message Luminosity {}
+    message Lerp {
+        int32 scale = 1; // [1..255]
+    }
+    message PixelXor {
+        fixed32 op_color = 1;
+    }
+    message Arithmetic {
+        float k1 = 1;
+        float k2 = 2;
+        float k3 = 3;
+        float k4 = 4;
+        enum EnforcePMColor {
+            ENFORCE_PMCOLOR_ON = 0;
+            ENFORCE_PMCOLOR_OFF = 1;
+        }
+        EnforcePMColor enforce_pmcolor = 5;
+    }
+    oneof mode {
+        ClearMode    clear_xfermode      = 1;
+        Src          src_xfermode        = 2;
+        Dst          dst_xfermode        = 3;
+        SrcOver      srcover_xfermode    = 4;
+        DstOver      dstover_xfermode    = 5;
+        SrcIn        srcin_xfermode      = 6;
+        DstIn        dstin_xfermode      = 7;
+        SrcOut       srcout_xfermode     = 8;
+        DstOut       dstout_xfermode     = 9;
+        SrcATop      srcatop_xfermode    = 10;
+        DstATop      dstatop_xfermode    = 11;
+        Xor          xor_xfermode        = 12;
+        Plus         plus_xfermode       = 13;
+        Modulate     modulate_xfermode   = 14;
+        Screen       screen_xfermode     = 15;
+        Overlay      overlay_xfermode    = 16;
+        Darken       darken_xfermode     = 17;
+        Lighten      lighten_xfermode    = 18;
+        ColorDodge   colordodge_xfermode = 19;
+        ColorBurn    colorburn_xfermode  = 20;
+        HardLight    hardlight_xfermode  = 21;
+        SoftLight    softlight_xfermode  = 22;
+        Difference   difference_xfermode = 23;
+        Exclusion    exclusion_xfermode  = 24;
+        Multiply     multiply_xfermode   = 25;
+        Hue          hue_xfermode        = 26;
+        Saturation   saturation_xfermode = 27;
+        Color        color_xfermode      = 28;
+        Luminosity   luminosity_xfermode = 29;
+        Lerp         lerp_xfermode       = 30;
+        PixelXor     pixelxor_xfermode   = 31;
+        Arithmetic   arithmetic_xfermode = 32;
+    }
+}
+
+message Typeface {
+    bytes serializedTypeface = 1;
+}
+
+message PathEffect  { string factoryName = 1; bytes flattenedObject = 2; }
+message Shader      { string factoryName = 1; bytes flattenedObject = 2; }
+message MaskFilter  { string factoryName = 1; bytes flattenedObject = 2; }
+message ColorFilter { string factoryName = 1; bytes flattenedObject = 2; }
+message Rasterizer  { string factoryName = 1; bytes flattenedObject = 2; }
+message DrawLooper  { string factoryName = 1; bytes flattenedObject = 2; }
+message ImageFilter { string factoryName = 1; bytes flattenedObject = 2; }
+
+message Annotation {
+    enum Key {
+        URL               = 0;
+        DEFINE_NAMED_DEST = 1;
+        LINK_NAMED_DEST   = 2;
+    }
+    Key key = 1;
+    bytes value = 2;
+}
+
+message TextBlob {
+    message Run {
+        enum GlyphPositioning {
+            DEFAULT_POSITIONING    = 0;
+            HORIZONTAL_POSITIONING = 1;
+            FULL_POSITIONING       = 2;
+        }
+        GlyphPositioning glyph_positioning = 1;
+        Typeface typeface = 2;
+        Font font = 3;
+        Point offset = 4;
+        repeated int32 glyph = 5;
+        repeated Point positions = 6;
+    }
+    repeated Run run = 1;
+}
+
+message SaveLayerFlags {
+    enum HasAlphaLayer {
+        HAS_ALPHA_LAYER_ON  = 0;
+        HAS_ALPHA_LAYER_OFF = 1;
+    }
+    enum FullColorLayer {
+        FULL_COLOR_LAYER_ON  = 0;
+        FULL_COLOR_LAYER_OFF = 1;
+    }
+    enum ClipToLayer {
+        CLIP_TO_LAYER_ON  = 0;
+        CLIP_TO_LAYER_OFF = 1;
+    }
+    enum MatrixClip {
+        MATRIX_CLIP_ON  = 0;
+        MATRIX_CLIP_OFF = 1;
+    }
+    enum ARGB_ClipLayer {
+        ARGB_CLIP_LAYER_ON  = 0;
+        ARGB_CLIP_LAYER_OFF = 1;
+    }
+    HasAlphaLayer  has_alpha_layer  = 1;
+    FullColorLayer full_color_layer = 2;
+    ClipToLayer    clip_to_layer    = 3;
+    MatrixClip     matrix_clip      = 4;
+    ARGB_ClipLayer argb_clip_layer  = 5;
+}
+enum RegionOperation {
+    INTERSECT_OP          = 0;
+    DIFFERENCE_OP         = 1;
+    UNION_OP              = 2;
+    XOR_OP                = 3;
+    REVERSE_DIFFERENCE_OP = 4;
+    REPLACE_OP            = 5;
+}
+
+message RemoteCommands {
+    enum IDType {
+        ID_TYPE_MATRIX       = 0;
+        ID_TYPE_MISC         = 1;
+        ID_TYPE_PATH         = 2;
+        ID_TYPE_STROKE       = 3;
+        ID_TYPE_TEXT_BLOB    = 4;
+        ID_TYPE_PATH_EFFECT  = 5;
+        ID_TYPE_SHADER       = 6;
+        ID_TYPE_XFERMODE     = 7;
+        ID_TYPE_MASK_FILTER  = 8;
+        ID_TYPE_COLOR_FILTER = 9;
+        ID_TYPE_RASTERIZER   = 10;
+        ID_TYPE_DRAW_LOOPER  = 11;
+        ID_TYPE_IMAGE_FILTER = 12;
+        ID_TYPE_ANNOTATION   = 13;
+    }
+    message DefineMatrix {      uint64 id = 1; Matrix      matrix       = 2; }
+    message DefineMisc {        uint64 id = 1; Misc        misc         = 2; }
+    message DefinePath {        uint64 id = 1; Path        path         = 2; }
+    message DefineStroke {      uint64 id = 1; Stroke      stroke       = 2; }
+    message DefineTextBlob {    uint64 id = 1; TextBlob    text_blob    = 2; }
+    message DefineAnnotation {  uint64 id = 1; Annotation  annotation   = 2; }
+    message DefinePathEffect {  uint64 id = 1; PathEffect  obj = 2; }
+    message DefineShader {      uint64 id = 1; Shader      obj = 2; }
+    message DefineXfermode {    uint64 id = 1; Xfermode    obj = 2; }
+    message DefineMaskFilter {  uint64 id = 1; MaskFilter  obj = 2; }
+    message DefineColorFilter { uint64 id = 1; ColorFilter obj = 2; }
+    message DefineRasterizer {  uint64 id = 1; Rasterizer  obj = 2; }
+    message DefineDrawLooper {  uint64 id = 1; DrawLooper  obj = 2; }
+    message DefineImageFilter { uint64 id = 1; ImageFilter obj = 2; }
+    message Undefine {
+        IDType type = 1;
+        uint64 id = 2;
+    }
+    message CommonIDs {
+        uint64 misc = 1;
+        uint64 patheffect = 2;
+        uint64 shader = 3;
+        uint64 xfermode = 4;
+        uint64 maskfilter = 5;
+        uint64 colorfilter = 6;
+        uint64 rasterizer = 7;
+        uint64 looper = 8;
+        uint64 imagefilter = 9;
+        uint64 annotation = 10;
+    };
+
+    message Save {}
+    message Restore {}
+
+    message SaveLayer {
+        uint64 bounds = 1;
+        CommonIDs common_ids = 2;
+        SaveLayerFlags  save_layer_flags = 3;
+    }
+    message SetMatrix { uint64 matrix = 1; }
+    message ClipPath {
+        uint64 path = 1;
+        RegionOperation region_operation = 2;
+        AntiAlias anti_alias = 3;
+    }
+    message FillPath {
+        uint64 path = 1;
+        CommonIDs common_ids = 2;
+    }
+    message StrokePath {
+        uint64 path = 1;
+        CommonIDs common_ids = 2;
+        uint64 stroke = 3;
+    }
+    message FillText {
+        uint64 text = 1;
+        Point point = 2;
+        CommonIDs common_ids = 3;
+    }
+    message StrokeText {
+        uint64 text = 1;
+        Point point = 2;
+        CommonIDs common_ids = 3;
+        uint64 stroke = 4;
+    }
+    message RemoteCommand {
+        oneof command {
+            DefineMatrix      define_matrix       = 1;
+            DefineMisc        define_misc         = 2;
+            DefinePath        define_path         = 3;
+            DefineStroke      define_stroke       = 4;
+            DefineTextBlob    define_text_blob    = 5;
+            DefinePathEffect  define_path_effect  = 6;
+            DefineShader      define_shader       = 7;
+            DefineXfermode    define_xfermode     = 8;
+            DefineMaskFilter  define_mask_filter  = 9;
+            DefineColorFilter define_color_filter = 10;
+            DefineRasterizer  define_rasterizer   = 11;
+            DefineDrawLooper  define_draw_looper  = 12;
+            DefineImageFilter define_image_filter = 13;
+            DefineAnnotation  define_annotation   = 14;
+            Undefine          undefine            = 15;
+            Save              save                = 16;
+            Restore           restore             = 17;
+            SaveLayer         save_layer          = 18;
+            SetMatrix         set_matrix          = 19;
+            ClipPath          clip_path           = 20;
+            FillPath          fill_path           = 21;
+            StrokePath        stroke_path         = 22;
+            FillText          fill_text           = 23;
+            StrokeText        stroke_text         = 24;
+        }
+    }
+    repeated RemoteCommand remote_commands = 1;
+}

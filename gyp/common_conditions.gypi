@@ -225,7 +225,7 @@
         ],
         'cflags_cc': [
           '-std=c++11',
-          '-fno-rtti',
+#          '-fno-rtti',
           '-fno-threadsafe-statics',
           '-Wnon-virtual-dtor',
         ],
@@ -522,7 +522,8 @@
           'CLANG_CXX_LIBRARY':                         'libc++',
           'CLANG_CXX_LANGUAGE_STANDARD':               'c++11',
           'GCC_ENABLE_CPP_EXCEPTIONS':                 'NO',   # -fno-exceptions
-          'GCC_ENABLE_CPP_RTTI':                       'NO',   # -fno-rtti
+          #'GCC_ENABLE_CPP_RTTI':                       'NO',   # -fno-rtti
+          'GCC_ENABLE_CPP_RTTI':                       'YES',   # -fno-rtti
           'GCC_THREADSAFE_STATICS':                    'NO',   # -fno-threadsafe-statics
           'GCC_ENABLE_SUPPLEMENTAL_SSE3_INSTRUCTIONS': 'YES',  # -mssse3
           'GCC_SYMBOLS_PRIVATE_EXTERN':                'NO',   # -fvisibility=hidden
@@ -579,7 +580,8 @@
           'CLANG_CXX_LIBRARY':              'libc++',
           'CLANG_CXX_LANGUAGE_STANDARD':    'c++11',
           'GCC_ENABLE_CPP_EXCEPTIONS':      'NO',   # -fno-exceptions
-          'GCC_ENABLE_CPP_RTTI':            'NO',   # -fno-rtti
+          #'GCC_ENABLE_CPP_RTTI':            'NO',   # -fno-rtti
+          'GCC_ENABLE_CPP_RTTI':            'YES',   # -fno-rtti
           'GCC_THREADSAFE_STATICS':         'NO',   # -fno-threadsafe-statics
           'GCC_SYMBOLS_PRIVATE_EXTERN':     'NO',   # -fvisibility=hidden
           'GCC_INLINES_ARE_PRIVATE_EXTERN': 'NO',   # -fvisibility-inlines-hidden
