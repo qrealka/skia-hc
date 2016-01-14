@@ -22,6 +22,8 @@ public:
     SK_TO_STRING_OVERRIDE()
     SK_DECLARE_PUBLIC_FLATTENABLE_DESERIALIZATION_PROCS(SkPixelXorXfermode)
 
+    SkValue asValue() const override;
+
 protected:
     void flatten(SkWriteBuffer&) const override;
     SkPMColor xferColor(SkPMColor src, SkPMColor dst) const override;

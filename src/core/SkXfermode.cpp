@@ -15,6 +15,7 @@
 #include "SkReadBuffer.h"
 #include "SkString.h"
 #include "SkWriteBuffer.h"
+#include "SkValue.h"
 
 #define SkAlphaMulAlpha(a, b)   SkMulDiv255Round(a, b)
 
@@ -763,6 +764,14 @@ void SkProcCoeffXfermode::flatten(SkWriteBuffer& buffer) const {
     buffer.write32(fMode);
 }
 
+enum { kMode };
+
+SkValue SkProcCoeffXfermode::asValue() const {
+    auto value = SkValue::Object(SkValue::ProcCoeffXfermode);
+    value.set(kMode, SkValue::FromU32(SkToU32(fMode)));
+    return value;
+}
+
 bool SkProcCoeffXfermode::asMode(Mode* mode) const {
     if (mode) {
         *mode = fMode;
@@ -1071,3 +1080,5 @@ bool SkXfermode::IsOpaque(const SkXfermode* xfer, SrcColorOpacity opacityType) {
 SK_DEFINE_FLATTENABLE_REGISTRAR_GROUP_START(SkXfermode)
     SK_DEFINE_FLATTENABLE_REGISTRAR_ENTRY(SkProcCoeffXfermode)
 SK_DEFINE_FLATTENABLE_REGISTRAR_GROUP_END
+
+SkValue SkXfermode::asValue() const { return SkValue(); }

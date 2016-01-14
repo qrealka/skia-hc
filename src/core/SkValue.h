@@ -11,6 +11,8 @@
 #include "SkTypes.h"
 #include <functional>
 
+class SkData;
+
 class SkValue {
 public:
     enum Type : uint32_t {
@@ -20,19 +22,25 @@ public:
         Bytes, S16s, U16s, S32s, U32s, S64s, U64s, F32s, F64s,
         Array,
 
+        kMaxBuiltin = 0xFF,
+
         // 256-2147483647 may be used by Skia for public Object types.
 
+        ArithmeticXfermode,
+        LerpXfermode,
+        OverdrawXfermode,
+        PixelXorXfermode,
+        ProcCoeffXfermode,
 
         // 2147483648+ won't be used by Skia.  They're open for client-specific use, testing, etc.
     };
 
-    enum Key : uint32_t {
-        // Each Object type may define its own namespace of Key values,
-        // so there are no pre-defined Keys here.
-        //
-        // This is just a reminder that they must fit in a uint32_t,
-        // and that their namespace is distinct from other uint32_ts (e.g. Type).
-    };
+    // Each Object type may define its own namespace of Key values,
+    // so there are no pre-defined Keys here.
+    //
+    // This is just a reminder that they must fit in a uint32_t,
+    // and that their namespace is distinct from other uint32_ts (e.g. Type).
+    typedef uint32_t Key;
 
     SkValue();
     SkValue(const SkValue&);
@@ -46,7 +54,7 @@ public:
     static SkValue FromS32(int32_t);
     static SkValue FromU32(uint32_t);
     static SkValue FromF32(float);
-    static SkValue FromBytes(const void*, size_t);  // Copies.
+    static SkValue FromBytes(SkData*);
     static SkValue Object(Type);
 
     Type type() const;
@@ -57,25 +65,25 @@ public:
     uint32_t u32() const;
     float    f32() const;
 
-    const void* bytes() const;
-    size_t      count() const;
+    SkData* bytes() const;
 
     void set(Key, SkValue);
     const SkValue* get(Key) const;
     void foreach(std::function<void(Key, const SkValue&)>) const;
 
 private:
-    class Bytes;
-    class Object;
+    class Obj;
 
     Type fType;
     union {
-        int32_t       fS32;
-        uint32_t      fU32;
-        float         fF32;
-        class Bytes*  fBytes;
-        class Object* fObject;
+        int32_t  fS32;
+        uint32_t fU32;
+        float    fF32;
+        SkData*  fBytes;
+        Obj*     fObject;
     };
+
+    bool isObject() const { return fType > kMaxBuiltin; }
 };
 
 #endif//SkValue_DEFINED

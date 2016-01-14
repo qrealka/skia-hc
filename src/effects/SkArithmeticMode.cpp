@@ -11,11 +11,14 @@
 #include "SkWriteBuffer.h"
 #include "SkString.h"
 #include "SkUnPreMultiply.h"
+#include "SkValue.h"
 #if SK_SUPPORT_GPU
 #include "SkArithmeticMode_gpu.h"
 #endif
 
 static const bool gUseUnpremul = false;
+
+enum { kK0, kK1, kK2, kK3, kEnforcePMColor };
 
 class SkArithmeticMode_scalar : public SkXfermode {
 public:
@@ -36,6 +39,17 @@ public:
 
     bool asXPFactory(GrXPFactory**) const override;
 #endif
+
+
+    SkValue asValue() const override {
+        auto value = SkValue::Object(SkValue::ArithmeticXfermode);
+        value.set(kK0, SkValue::FromF32(fK[0]));
+        value.set(kK1, SkValue::FromF32(fK[1]));
+        value.set(kK2, SkValue::FromF32(fK[2]));
+        value.set(kK3, SkValue::FromF32(fK[3]));
+        value.set(kEnforcePMColor, SkValue::FromS32(fEnforcePMColor ? 1 : 0));
+        return value;
+    }
 
 private:
     SkArithmeticMode_scalar(SkScalar k1, SkScalar k2, SkScalar k3, SkScalar k4, bool enforcePMColor) {

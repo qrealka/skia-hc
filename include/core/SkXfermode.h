@@ -17,6 +17,7 @@ class GrFragmentProcessor;
 class GrTexture;
 class GrXPFactory;
 class SkString;
+class SkValue;
 
 /** \class SkXfermode
  *
@@ -228,6 +229,8 @@ public:
     SK_TO_STRING_PUREVIRT()
     SK_DECLARE_FLATTENABLE_REGISTRAR_GROUP()
     SK_DEFINE_FLATTENABLE_TYPE(SkXfermode)
+
+    virtual SkValue asValue() const;
 
 protected:
     SkXfermode() {}

@@ -31,6 +31,8 @@ public:
     SK_TO_STRING_OVERRIDE()
     SK_DECLARE_PUBLIC_FLATTENABLE_DESERIALIZATION_PROCS(SkLerpXfermode)
 
+    SkValue asValue() const override;
+
 protected:
     void flatten(SkWriteBuffer&) const override;
 

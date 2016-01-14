@@ -10,6 +10,7 @@
 #include "SkReadBuffer.h"
 #include "SkWriteBuffer.h"
 #include "SkString.h"
+#include "SkValue.h"
 
 SkXfermode* SkLerpXfermode::Create(SkScalar scale) {
     int scale256 = SkScalarRoundToInt(scale * 256);
@@ -107,3 +108,11 @@ void SkLerpXfermode::toString(SkString* str) const {
     str->printf("SkLerpXfermode: scale: %g", fScale256 / 256.0);
 }
 #endif
+
+enum { kScale256 };
+
+SkValue SkLerpXfermode::asValue() const {
+    auto value = SkValue::Object(SkValue::LerpXfermode);
+    value.set(kScale256, SkValue::FromU32(SkToU32(fScale256)));
+    return value;
+}
