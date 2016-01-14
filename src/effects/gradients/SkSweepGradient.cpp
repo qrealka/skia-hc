@@ -270,3 +270,18 @@ void SkSweepGradient::toString(SkString* str) const {
     str->append(")");
 }
 #endif
+
+
+enum { kLocalMatrix, kTileMode, kFlags, kColors, kPositions,
+       kCenterX, kCenterY };
+
+SkValue SkSweepGradient::asValue() const {
+    auto val = SkValue::Object(SkValue::SweepGradientShader);
+    SkGradientShaderBase::SetCommonValues(
+            &val, this->getLocalMatrix(), fTileMode, fGradFlags, fColorCount,
+            fOrigColors, fOrigPos,
+            kLocalMatrix, kTileMode, kFlags, kColors, kPositions);
+    val.set(kCenterX, SkValue::FromF32(fCenter.x()));
+    val.set(kCenterY, SkValue::FromF32(fCenter.y()));
+    return val;
+}

@@ -29,6 +29,8 @@ public:
     SK_TO_STRING_OVERRIDE()
     SK_DECLARE_PUBLIC_FLATTENABLE_DESERIALIZATION_PROCS(SkEmptyShader)
 
+    SkValue asValue() const override;
+
 protected:
     SkShader::Context* onCreateContext(const ContextRec&, void*) const override {
         return nullptr;

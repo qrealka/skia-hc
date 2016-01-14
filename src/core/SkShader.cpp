@@ -16,6 +16,7 @@
 #include "SkReadBuffer.h"
 #include "SkScalar.h"
 #include "SkShader.h"
+#include "SkValue.h"
 #include "SkWriteBuffer.h"
 
 //#define SK_TRACK_SHADER_LIFETIME
@@ -330,6 +331,13 @@ void SkColorShader::toString(SkString* str) const {
 }
 #endif
 
+enum { kColor };
+SkValue SkColorShader::asValue() const {
+    auto val = SkValue::Object(SkValue::ColorShader);
+    val.set(kColor, SkValue::FromU32(fColor));
+    return val;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 SkFlattenable* SkEmptyShader::CreateProc(SkReadBuffer&) {
@@ -347,3 +355,9 @@ void SkEmptyShader::toString(SkString* str) const {
     str->append(")");
 }
 #endif
+
+SkValue SkShader::asValue() const { return SkValue(); }
+
+SkValue SkEmptyShader::asValue() const {
+    return SkValue::Object(SkValue::EmptyShader);
+}

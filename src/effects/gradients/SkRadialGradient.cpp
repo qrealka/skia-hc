@@ -385,3 +385,17 @@ void SkRadialGradient::toString(SkString* str) const {
     str->append(")");
 }
 #endif
+
+enum { kLocalMatrix, kTileMode, kFlags, kColors, kPositions,
+       kCenterX, kCenterY, kRadius };
+SkValue SkRadialGradient::asValue() const {
+    auto val = SkValue::Object(SkValue::RadialGradient);
+    SkGradientShaderBase::SetCommonValues(
+            &val, this->getLocalMatrix(), fTileMode, fGradFlags, fColorCount,
+            fOrigColors, fOrigPos,
+            kLocalMatrix, kTileMode, kFlags, kColors, kPositions);
+    val.set(kCenterX, SkValue::FromF32(fCenter.x()));
+    val.set(kCenterY, SkValue::FromF32(fCenter.y()));
+    val.set(kRadius, SkValue::FromF32(fRadius));
+    return val;
+}

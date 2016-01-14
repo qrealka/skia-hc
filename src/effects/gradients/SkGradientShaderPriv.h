@@ -8,16 +8,17 @@
 #ifndef SkGradientShaderPriv_DEFINED
 #define SkGradientShaderPriv_DEFINED
 
-#include "SkGradientBitmapCache.h"
-#include "SkGradientShader.h"
 #include "SkClampRange.h"
 #include "SkColorPriv.h"
-#include "SkReadBuffer.h"
-#include "SkWriteBuffer.h"
+#include "SkGradientBitmapCache.h"
+#include "SkGradientShader.h"
 #include "SkMallocPixelRef.h"
-#include "SkUtils.h"
-#include "SkShader.h"
 #include "SkOnce.h"
+#include "SkReadBuffer.h"
+#include "SkShader.h"
+#include "SkUtils.h"
+#include "SkValue.h"
+#include "SkWriteBuffer.h"
 
 static inline void sk_memset32_dither(uint32_t dst[], uint32_t v0, uint32_t v1,
                                int count) {
@@ -219,6 +220,20 @@ public:
     GpuColorType getGpuColorType(SkColor colors[3]) const;
 
     uint32_t getGradFlags() const { return fGradFlags; }
+
+    static void SetCommonValues(
+            SkValue* val,
+            const SkMatrix& localMatrix,
+            SkShader::TileMode tileMode,
+            uint32_t flags,
+            int count,
+            SkColor* colors,
+            SkScalar* positions,
+            SkValue::Key localMatrixKey,
+            SkValue::Key tileModeKey,
+            SkValue::Key flagsKey,
+            SkValue::Key colorsKey,
+            SkValue::Key positionsKey);
 
 protected:
     SkGradientShaderBase(SkReadBuffer& );

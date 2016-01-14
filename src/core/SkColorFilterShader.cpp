@@ -7,9 +7,10 @@
 
 #include "SkColorFilterShader.h"
 #include "SkReadBuffer.h"
-#include "SkWriteBuffer.h"
 #include "SkShader.h"
 #include "SkString.h"
+#include "SkValue.h"
+#include "SkWriteBuffer.h"
 
 #if SK_SUPPORT_GPU
 #include "GrFragmentProcessor.h"
@@ -124,6 +125,14 @@ void SkColorFilterShader::toString(SkString* str) const {
     str->append(")");
 }
 #endif
+
+enum { kShader, kFilter };
+SkValue SkColorFilterShader::asValue() const {
+    auto val = SkValue::Object(SkValue::ColorFilterShader);
+    val.set(kShader, fShader->asValue());
+    val.set(kFilter, fFilter->asValue());
+    return val;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -16,6 +16,7 @@
 class GrContext;
 class GrFragmentProcessor;
 class SkBitmap;
+class SkValue;
 
 /**
  *  ColorFilters are optional objects in the drawing pipeline. When present in
@@ -136,6 +137,8 @@ public:
 
     SK_DECLARE_FLATTENABLE_REGISTRAR_GROUP()
     SK_DEFINE_FLATTENABLE_TYPE(SkColorFilter)
+
+    virtual SkValue asValue() const;
 
 protected:
     SkColorFilter() {}

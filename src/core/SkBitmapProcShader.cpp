@@ -12,6 +12,7 @@
 #include "SkErrorInternals.h"
 #include "SkPixelRef.h"
 #include "SkReadBuffer.h"
+#include "SkValue.h"
 #include "SkWriteBuffer.h"
 
 #if SK_SUPPORT_GPU
@@ -286,6 +287,16 @@ void SkBitmapProcShader::toString(SkString* str) const {
     str->append(")");
 }
 #endif
+
+enum { kMatrix, kBitmap, kTileModeX, kTileModeY };
+SkValue SkBitmapProcShader::asValue() const {
+    auto val = SkValue::Object(SkValue::BitmapProcShader);
+    val.set(kMatrix, SkValue::Encode(this->getLocalMatrix()));
+    val.set(kBitmap, SkValue::Encode(fRawBitmap));
+    val.set(kTileModeX, SkValue::FromS32(SkToS32(fTileModeX)));
+    val.set(kTileModeY, SkValue::FromS32(SkToS32(fTileModeY)));
+    return val;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 

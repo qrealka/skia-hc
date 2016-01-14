@@ -74,6 +74,8 @@ public:
     SK_TO_STRING_OVERRIDE()
     SK_DECLARE_PUBLIC_FLATTENABLE_DESERIALIZATION_PROCS(SkComposeShader)
 
+    SkValue asValue() const override;
+
 protected:
     SkComposeShader(SkReadBuffer& );
     void flatten(SkWriteBuffer&) const override;

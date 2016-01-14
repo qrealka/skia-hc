@@ -743,3 +743,18 @@ void SkLinearGradient::LinearGradientContext::shade4_clamp(int x, int y, SkPMCol
     }
 }
 
+enum { kLocalMatrix, kTileMode, kFlags, kColors, kPositions,
+       kStartX, kStartY, kEndX, kEndY };
+
+SkValue SkLinearGradient::asValue() const {
+    auto val = SkValue::Object(SkValue::LinearGradientShader);
+    SkGradientShaderBase::SetCommonValues(
+            &val, this->getLocalMatrix(), fTileMode, fGradFlags, fColorCount,
+            fOrigColors, fOrigPos,
+            kLocalMatrix, kTileMode, kFlags, kColors, kPositions);
+    val.set(kStartX, SkValue::FromF32(fStart.x()));
+    val.set(kStartY, SkValue::FromF32(fStart.y()));
+    val.set(kEndX, SkValue::FromF32(fEnd.x()));
+    val.set(kEndY, SkValue::FromF32(fEnd.y()));
+    return val;
+}

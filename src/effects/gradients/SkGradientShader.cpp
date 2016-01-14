@@ -1212,3 +1212,31 @@ int GrGradientEffect::RandomGradientParams(SkRandom* random,
 }
 
 #endif
+
+void SkGradientShaderBase::SetCommonValues(
+        SkValue* val,
+        const SkMatrix& localMatrix,
+        SkShader::TileMode tileMode,
+        uint32_t flags,
+        int count,
+        SkColor* colors,
+        SkScalar* positions,
+        SkValue::Key localMatrixKey,
+        SkValue::Key tileModeKey,
+        SkValue::Key flagsKey,
+        SkValue::Key colorsKey,
+        SkValue::Key positionsKey) {
+    if (!localMatrix.isIdentity()) {
+        val->set(localMatrixKey, SkValue::Encode(localMatrix));
+    }
+    if (SkToS32(tileMode) != 0) {
+        val->set(tileModeKey, SkValue::FromS32(SkToS32(tileMode)));
+    }
+    if (flags != 0) {
+        val->set(flagsKey, SkValue::FromS32(flags));
+    }
+    val->set(colorsKey, SkValue::FromU32s(colors, count));
+    if (positions) {
+        val->set(positionsKey, SkValue::FromF32s(positions, count));
+    }
+}

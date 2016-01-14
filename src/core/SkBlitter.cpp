@@ -5,17 +5,18 @@
  * found in the LICENSE file.
  */
 
-#include "SkBlitter.h"
 #include "SkAntiRun.h"
+#include "SkBlitter.h"
 #include "SkColor.h"
 #include "SkColorFilter.h"
-#include "SkReadBuffer.h"
-#include "SkWriteBuffer.h"
 #include "SkMask.h"
 #include "SkMaskFilter.h"
+#include "SkReadBuffer.h"
 #include "SkString.h"
 #include "SkTLazy.h"
 #include "SkUtils.h"
+#include "SkValue.h"
+#include "SkWriteBuffer.h"
 #include "SkXfermode.h"
 #include "SkXfermodeInterpretation.h"
 
@@ -717,6 +718,13 @@ public:
 #endif
 
     SK_DECLARE_PUBLIC_FLATTENABLE_DESERIALIZATION_PROCS(Sk3DShader)
+
+    enum { kProxy };
+    SkValue asValue() const override {
+        auto val = SkValue::Object(SkValue::ThreeDeeShader);
+        val.set(kProxy, fProxy->asValue());
+        return val;
+    }
 
 protected:
     void flatten(SkWriteBuffer& buffer) const override {

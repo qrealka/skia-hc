@@ -7,14 +7,15 @@
  */
 
 
-#include "SkComposeShader.h"
 #include "SkColorFilter.h"
 #include "SkColorPriv.h"
 #include "SkColorShader.h"
+#include "SkComposeShader.h"
 #include "SkReadBuffer.h"
+#include "SkString.h"
+#include "SkValue.h"
 #include "SkWriteBuffer.h"
 #include "SkXfermode.h"
-#include "SkString.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -252,3 +253,12 @@ void SkComposeShader::toString(SkString* str) const {
     str->append(")");
 }
 #endif
+
+enum { kShaderA, kShaderB };
+
+SkValue SkComposeShader::asValue() const {
+    auto val = SkValue::Object(SkValue::ComposeShader);
+    val.set(kShaderA, fShaderA->asValue());
+    val.set(kShaderB, fShaderB->asValue());
+    return val;
+}

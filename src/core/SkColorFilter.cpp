@@ -11,6 +11,7 @@
 #include "SkString.h"
 #include "SkTDArray.h"
 #include "SkUnPreMultiply.h"
+#include "SkValue.h"
 #include "SkWriteBuffer.h"
 
 #if SK_SUPPORT_GPU
@@ -147,3 +148,4 @@ SK_DEFINE_FLATTENABLE_REGISTRAR_ENTRY(SkComposeColorFilter)
 SK_DEFINE_FLATTENABLE_REGISTRAR_ENTRY(SkModeColorFilter)
 SK_DEFINE_FLATTENABLE_REGISTRAR_GROUP_END
 
+SkValue SkColorFilter::asValue() const { return SkValue(); }

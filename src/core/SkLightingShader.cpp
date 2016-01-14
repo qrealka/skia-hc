@@ -14,6 +14,7 @@
 #include "SkMathPriv.h"
 #include "SkPoint3.h"
 #include "SkReadBuffer.h"
+#include "SkValue.h"
 #include "SkWriteBuffer.h"
 
 ////////////////////////////////////////////////////////////////////////////
@@ -103,6 +104,27 @@ public:
 
     SK_TO_STRING_OVERRIDE()
     SK_DECLARE_PUBLIC_FLATTENABLE_DESERIALIZATION_PROCS(SkLightingShaderImpl)
+
+    enum { kLocalMatrix, kNormLocalMatrix, kDiffuseMap, kNormalMap, kLights };
+
+    SkValue asValue() const override {
+        auto val = SkValue::Object(SkValue::LightingShader);
+        const SkMatrix& localMatrix = this->getLocalMatrix();
+        if (!localMatrix.isIdentity()) {
+            val.set(kLocalMatrix, SkValue::Encode(localMatrix));
+        }
+        if (!fNormLocalMatrix.isIdentity()) {
+            val.set(kNormLocalMatrix, SkValue::Encode(fNormLocalMatrix));
+        }
+        val.set(kDiffuseMap, SkValue::Encode(fDiffuseMap));
+        val.set(kNormalMap, SkValue::Encode(fNormalMap));
+        auto lights = SkValue::ValueArray(SkToSizeT(fLights->numLights()));
+        for (int i = 0; i < fLights->numLights(); ++i) {
+            lights.setAt(i, SkValue::Encode(fLights->light(i)));
+        }
+        val.set(kLights, std::move(lights));
+        return val;
+    }
 
 protected:
     void flatten(SkWriteBuffer&) const override;

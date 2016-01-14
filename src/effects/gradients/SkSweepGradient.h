@@ -39,6 +39,8 @@ public:
     SK_TO_STRING_OVERRIDE()
     SK_DECLARE_PUBLIC_FLATTENABLE_DESERIALIZATION_PROCS(SkSweepGradient)
 
+    SkValue asValue() const override;
+
 protected:
     void flatten(SkWriteBuffer& buffer) const override;
     Context* onCreateContext(const ContextRec&, void* storage) const override;

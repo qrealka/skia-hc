@@ -10,6 +10,7 @@
 #include "SkImage_Base.h"
 #include "SkImageShader.h"
 #include "SkReadBuffer.h"
+#include "SkValue.h"
 #include "SkWriteBuffer.h"
 
 SkImageShader::SkImageShader(const SkImage* img, TileMode tmx, TileMode tmy, const SkMatrix* matrix)
@@ -132,3 +133,14 @@ const GrFragmentProcessor* SkImageShader::asFragmentProcessor(GrContext* context
 }
 
 #endif
+
+enum { kTileModeX, kTileModeY, kMatrix, kImage };
+
+SkValue SkImageShader::asValue() const {
+    auto val = SkValue::Object(SkValue::ImageShader);
+    val.set(kTileModeX, SkValue::FromS32(SkToS32(fTileModeX)));
+    val.set(kTileModeY, SkValue::FromS32(SkToS32(fTileModeY)));
+    val.set(kMatrix, SkValue::Encode(this->getLocalMatrix()));
+    val.set(kImage, SkValue::Encode(fImage));
+    return val;
+}

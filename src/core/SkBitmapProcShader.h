@@ -16,6 +16,7 @@
 struct SkBitmapProcState;
 class SkBitmapProvider;
 
+
 class SkBitmapProcShader : public SkShader {
 public:
     SkBitmapProcShader(const SkBitmap& src, TileMode tx, TileMode ty,
@@ -32,6 +33,8 @@ public:
     const GrFragmentProcessor* asFragmentProcessor(GrContext*, const SkMatrix& viewM,
                                                    const SkMatrix*, SkFilterQuality) const override;
 #endif
+
+    SkValue asValue() const override;
 
 protected:
     class BitmapProcShaderContext : public SkShader::Context {

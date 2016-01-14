@@ -63,6 +63,8 @@ public:
     SK_TO_STRING_OVERRIDE()
     SK_DECLARE_PUBLIC_FLATTENABLE_DESERIALIZATION_PROCS(SkLinearGradient)
 
+    SkValue asValue() const override;
+
 protected:
     SkLinearGradient(SkReadBuffer& buffer);
     void flatten(SkWriteBuffer& buffer) const override;

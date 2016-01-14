@@ -18,6 +18,7 @@
 class SkColorFilter;
 class SkPath;
 class SkPicture;
+class SkValue;
 class SkXfermode;
 class GrContext;
 class GrFragmentProcessor;
@@ -381,6 +382,8 @@ public:
 
     SK_TO_STRING_VIRT()
     SK_DEFINE_FLATTENABLE_TYPE(SkShader)
+
+    virtual SkValue asValue() const;
 
 protected:
     void flatten(SkWriteBuffer&) const override;

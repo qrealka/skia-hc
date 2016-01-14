@@ -54,6 +54,8 @@ public:
     SK_TO_STRING_OVERRIDE()
     SK_DECLARE_PUBLIC_FLATTENABLE_DESERIALIZATION_PROCS(SkColorShader)
 
+    SkValue asValue() const override;
+
 protected:
     SkColorShader(SkReadBuffer&);
     void flatten(SkWriteBuffer&) const override;

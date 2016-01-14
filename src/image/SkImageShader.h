@@ -26,6 +26,8 @@ public:
                                                    const SkMatrix*, SkFilterQuality) const override;
 #endif
 
+    SkValue asValue() const override;
+
 protected:
     void flatten(SkWriteBuffer&) const override;
     Context* onCreateContext(const ContextRec&, void* storage) const override;

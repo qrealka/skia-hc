@@ -11,7 +11,11 @@
 #include "SkTypes.h"
 #include <functional>
 
+class SkBitmap;
 class SkData;
+class SkImage;
+class SkLight;
+class SkMatrix;
 
 class SkValue {
 public:
@@ -26,11 +30,33 @@ public:
 
         // 256-2147483647 may be used by Skia for public Object types.
 
+        Image,
+        Light,
+        Matrix,
+
         ArithmeticXfermode,
         LerpXfermode,
         OverdrawXfermode,
         PixelXorXfermode,
         ProcCoeffXfermode,
+
+        ThreeDeeShader,
+        BitmapProcShader,
+        ColorFilterShader,
+        ColorShader,
+        ComposeShader,
+        DCShader,
+        EmptyShader,
+        ImageShader,
+        LightingShader,
+        LinearGradientShader,
+        LocalMatrixShader,
+        PerlinNoiseShader,
+        PictureShader,
+        RadialGradient,
+        SweepGradientShader,
+        TriColorShader,
+        TwoPointConicalGradientShader,
 
         // 2147483648+ won't be used by Skia.  They're open for client-specific use, testing, etc.
     };
@@ -56,6 +82,9 @@ public:
     static SkValue FromF32(float);
     static SkValue FromBytes(SkData*);
     static SkValue Object(Type);
+    static SkValue ValueArray(size_t);
+    static SkValue FromU32s(const uint32_t*, int);
+    static SkValue FromF32s(const float*, int);
 
     Type type() const;
 
@@ -71,8 +100,26 @@ public:
     const SkValue* get(Key) const;
     void foreach(std::function<void(Key, const SkValue&)>) const;
 
+    size_t length() const;
+    const SkValue& at(size_t) const;
+    void setAt(size_t, SkValue);
+
+    const uint32_t* u32s(int* count) const;
+    const float*    f32s(int* count) const;
+
+    static SkValue Encode(const SkImage*);
+    static SkValue Encode(const SkBitmap&);
+    static SkValue Encode(const SkMatrix&);
+    static SkValue Encode(const SkLight&);
+
+    static SkImage* DecodeImage(const SkValue&);
+    static bool Decode(const SkValue&, SkBitmap*);
+    static bool Decode(const SkValue&, SkMatrix*);
+    static bool Decode(const SkValue&, SkLight*);
+
 private:
     class Obj;
+    class Arr;
 
     Type fType;
     union {
@@ -81,9 +128,13 @@ private:
         float    fF32;
         SkData*  fBytes;
         Obj*     fObject;
+        Arr*     fArray;
     };
 
     bool isObject() const { return fType > kMaxBuiltin; }
+    bool isData() const {
+        return Bytes == fType || F32s == fType || U32s == fType;
+    }
 };
 
 #endif//SkValue_DEFINED

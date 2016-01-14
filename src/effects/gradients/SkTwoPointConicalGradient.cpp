@@ -396,3 +396,21 @@ void SkTwoPointConicalGradient::toString(SkString* str) const {
     str->append(")");
 }
 #endif
+
+enum { kLocalMatrix, kTileMode, kFlags, kColors, kPositions,
+       kStartX, kStartY, kStartRadius, kEndX, kEndY, kEndRadius }; 
+
+SkValue SkTwoPointConicalGradient::asValue() const {
+    auto val = SkValue::Object(SkValue::TwoPointConicalGradientShader);
+    SkGradientShaderBase::SetCommonValues(
+            &val, this->getLocalMatrix(), fTileMode, fGradFlags, fColorCount,
+            fOrigColors, fOrigPos,
+            kLocalMatrix, kTileMode, kFlags, kColors, kPositions);
+    val.set(kStartX, SkValue::FromF32(fCenter1.x()));
+    val.set(kStartY, SkValue::FromF32(fCenter1.y()));
+    val.set(kStartRadius, SkValue::FromF32(fRadius1));
+    val.set(kEndX, SkValue::FromF32(fCenter2.x()));
+    val.set(kEndY, SkValue::FromF32(fCenter2.y()));
+    val.set(kEndRadius, SkValue::FromF32(fRadius2));
+    return val;
+}
