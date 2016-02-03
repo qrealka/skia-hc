@@ -62,9 +62,12 @@
       'variables': {
         'mojo_dir': '../third_party/externals/mojo/public'
       },
-      'dependencies': [ 'mojo' ],
+      'dependencies': [ 'mojo', 'skia_lib.gyp:skia_lib' ],
       'defines': [ 'SK_MOJO' ],
-      'sources': [ '../experimental/mojo/SkMojo.mojom.cc', ],
+      'sources': [
+        '../experimental/mojo/SkMojo.mojom.cc',
+        '../experimental/mojo/SkMojo.cpp',
+      ],
       'include_dirs': [ '../experimental/mojo', ],
       'all_dependent_settings': {
         'include_dirs': [ '../experimental/mojo' ],

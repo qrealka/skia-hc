@@ -7,4 +7,488 @@
 
 module SkMojo;
 
-struct FlattenedPicture { array<uint8> data; };
+struct PathEffect  { string name; array<uint8> data; };
+struct Shader      { string name; array<uint8> data; };
+struct Xfermode    { string name; array<uint8> data; };
+struct MaskFilter  { string name; array<uint8> data; };
+struct ColorFilter { string name; array<uint8> data; };
+struct Rasterizer  { string name; array<uint8> data; };
+struct DrawLooper  { string name; array<uint8> data; };
+struct ImageFilter { string name; array<uint8> data; };
+
+enum Hinting {
+    NO,
+    SLIGHT,
+    NORMAL,
+    FULL,
+};
+enum Style {
+    FILL,
+    STROKE,
+    STROKE_AND_FILL,
+};
+enum Cap {
+    BUTT,
+    ROUND,
+    SQUARE,
+};
+enum Join {
+    MITER,
+    ROUND,
+    BEVEL,
+};
+enum FilterQuality {
+    NONE,
+    LOW,
+    MEDIUM,
+    HIGH
+};
+struct Paint {
+    PathEffect?   path_effect;
+    Shader?       shader;
+    Xfermode?     xfermode;
+    MaskFilter?   mask_filter;
+    ColorFilter?  color_filter;
+    Rasterizer?   rasterizer;
+    DrawLooper?   looper;
+    ImageFilter?  image_filter;
+    uint32        color;
+    float         stroke_width;
+    float         stroke_miter_limit;
+    uint32        flags;
+    Hinting       hinting;
+    Style         style;
+    Cap           cap;
+    Join          join;
+    FilterQuality filter_quality;
+};
+
+enum Align {
+    LEFT,
+    CENTER,
+    RIGHT,
+};
+
+enum FillType {
+    WINDING,
+    EVEN_ODD,
+    INVERSE_WINDING,
+    INVERSE_EVEN_ODD,
+};
+
+struct MovePathVerb {
+    float end_x;
+    float end_y;
+};
+
+struct LinePathVerb {
+    float end_x;
+    float end_y;
+};
+
+struct QuadPathVerb {
+    float control_x;
+    float control_y;
+    float end_x;
+    float end_y;
+};
+
+struct ConicPathVerb {
+    float control_x;
+    float control_y;
+    float end_x;
+    float end_y;
+    float weight;
+};
+
+struct CubicPathVerb {
+    float control_1_x;
+    float control_1_y;
+    float control_2_x;
+    float control_2_y;
+    float end_x;
+    float end_y;
+};
+
+struct ClosePathVerb {};
+
+union PathVerb {
+    MovePathVerb  move;
+    LinePathVerb  line;
+    QuadPathVerb  quad;
+    ConicPathVerb conic;
+    CubicPathVerb cubic;
+    ClosePathVerb close;
+};
+
+struct Path {
+    FillType        fill_type;
+    array<PathVerb> verbs;
+};
+
+struct TextRun {
+    float         text_size;
+    float         text_scale_x;
+    float         text_skew_x;
+    Align         text_align;
+    Hinting       hinting;
+    uint32        typeface;
+    uint32        flags;
+    float         offset_x;
+    float         offset_y;
+    array<uint16> glyphs;
+    array<float>  positions;
+};
+
+enum XfermodeMode {
+    CLEAR,
+    SRC,
+    DST,
+    SRC_OVER,
+    DST_OVER,
+    SRC_IN,
+    DST_IN,
+    SRC_OUT,
+    DST_OUT,
+    SRC_ATOP,
+    DST_ATOP,
+    XOR,
+    PLUS,
+    MODULATE,
+    SCREEN,
+    OVERLAY,
+    DARKEN,
+    LIGHTEN,
+    COLOR_DODGE,
+    COLOR_BURN,
+    HARD_LIGHT,
+    SOFT_LIGHT,
+    DIFFERENCE,
+    EXCLUSION,
+    MULTIPLY,
+    HUE,
+    SATURATION,
+    COLOR,
+    LUMINOSITY,
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
+struct Matrix {
+    float scale_x;
+    float skew_x;
+    float trans_x;
+    float skew_y;
+    float scale_y;
+    float trans_y;
+    float persp_0;
+    float persp_1;
+    float persp_2;
+};
+
+struct Rect {
+    float left;
+    float top;
+    float right;
+    float bottom;
+};
+
+struct SaveCommand {};
+
+struct RestoreCommand {};
+
+struct SaveLayerCommand {
+    Rect?        bounds;
+    Paint?       paint;
+    ImageFilter? backdrop;
+    uint32       save_layer_flags;
+};
+
+struct SetMatrixCommand {
+    Matrix matrix;
+};
+
+struct DrawOvalCommand {
+    Rect  oval;
+    Paint paint;
+};
+
+struct DrawRectCommand {
+    Rect  rect;
+    Paint paint;
+};
+
+struct RoundRect {
+    float left;
+    float top;
+    float right;
+    float bottom;
+    float upper_left_x;
+    float upper_left_y;
+    float upper_right_x;
+    float upper_right_y;
+    float lower_right_x;
+    float lower_right_y;
+    float lower_left_x;
+    float lower_left_y;
+};
+
+struct DrawRoundRectCommand {
+    RoundRect round_rect;
+    Paint     paint;
+};
+
+struct DrawDoubleRoundRectCommand {
+    RoundRect outside;
+    RoundRect inside;
+    Paint     paint;
+};
+
+struct DrawPathCommand {
+    uint32 path;
+    Paint  paint;
+};
+
+struct DrawPaintCommand {
+    Paint paint;
+};
+
+enum PointMode {
+    POINTS,
+    LINES,
+    POLYGON,
+};
+
+struct DrawPointsCommand {
+    PointMode    point_mode;
+    array<float> points; // x, y pairs
+    Paint        paint;
+};
+
+struct DrawDrawableCommand {
+    uint32 drawable;  // fixme
+    Matrix matrix;
+};
+
+struct DrawPictureCommand {
+    uint32  picture;
+    Matrix? matrix;
+    Paint?  paint;
+};
+
+enum VertexMode {
+    TRIANGLES,
+    TRIANGLE_STRIP,
+    TRIANGLE_FAN
+};
+
+struct DrawVerticesCommand {
+    VertexMode    vertex_mode;
+    array<float>  vertices;
+    array<float>  texs;
+    array<uint32> colors;
+    Xfermode?     xfermode;
+    array<uint16> indices;
+    Paint         paint;
+};
+
+struct DrawPatchCommand {
+    float cubic_0_x;
+    float cubic_0_y;
+    float cubic_1_x;
+    float cubic_1_y;
+    float cubic_2_x;
+    float cubic_2_y;
+    float cubic_3_x;
+    float cubic_3_y;
+    float cubic_4_x;
+    float cubic_4_y;
+    float cubic_5_x;
+    float cubic_5_y;
+    float cubic_6_x;
+    float cubic_6_y;
+    float cubic_7_x;
+    float cubic_7_y;
+    float cubic_8_x;
+    float cubic_8_y;
+    float cubic_9_x;
+    float cubic_9_y;
+    float cubic_10_x;
+    float cubic_10_y;
+    float cubic_11_x;
+    float cubic_11_y;
+    uint32 color_0;
+    uint32 color_1;
+    uint32 color_2;
+    uint32 color_3;
+    float tex_coords_0_x;
+    float tex_coords_0_y;
+    float tex_coords_1_x;
+    float tex_coords_1_y;
+    float tex_coords_2_x;
+    float tex_coords_2_y;
+    float tex_coords_3_x;
+    float tex_coords_3_y;
+    Xfermode xfermode;
+    Paint paint;
+};
+
+struct DrawAtlasCommand {
+    uint32        image;
+    array<float>  rotation_and_scale_transforms;
+    array<float>  tex;
+    array<uint32> colors;
+    XfermodeMode  mode;
+    Rect?         cull_rect;
+    Paint?        paint;
+};
+
+struct DrawImageCommand {
+    uint32 image;
+    float  left;
+    float  top;
+    Paint? paint;
+};
+
+enum SrcRectConstraint {
+    STRICT,
+    FAST,
+};
+
+struct DrawImageRectCommand {
+    uint32 image;
+    Rect? src;
+    Rect dst;
+    Paint? paint;
+    SrcRectConstraint constraint;
+};
+
+struct DrawImageNineCommand {
+    uint32 image;
+    int32  center_rect_left;
+    int32  center_rect_top;
+    int32  center_rect_right;
+    int32  center_rect_bottom;
+    Rect   dst;
+    Paint? paint;
+};
+
+struct DrawTextBlobCommand {
+    uint32 text_blob;
+    float x;
+    float y;
+    Paint paint;
+};
+
+struct DrawTextCommand {
+    TextRun text;
+    float x;
+    float y;
+    Paint paint;
+};
+
+enum ClipEdgeStyle {
+    HARD,
+    SOFT
+};
+
+enum RegionOp {
+    DIFFERENCE,
+    INTERSECT,
+    UNION,
+    XOR,
+    REVERSE_DIFFERENCE,
+    REPLACE,
+};
+
+struct ClipRectCommand {
+    Rect          clip_rect;
+    RegionOp      op;
+    ClipEdgeStyle edge_style;
+};
+
+struct ClipRoundRectCommand {
+    RoundRect     round_rect;
+    RegionOp      op;
+    ClipEdgeStyle edge_style;
+};
+
+struct ClipPathCommand {
+    uint32        path;
+    RegionOp      op;
+    ClipEdgeStyle edge_style;
+};
+
+struct ClipRegionCommand {
+    array<int32>  region;
+    RegionOp      op;
+};
+
+/////////////////////
+
+struct DefineTypeface {
+    uint32       id;
+    array<uint8> typeface_data;
+};
+
+struct DefineImage {
+    uint32       id;
+    array<uint8> image_data;
+};
+
+struct DefineTextBlob {
+    uint32         id;
+    array<TextRun> runs;
+};
+
+struct DefinePicture {
+    uint32  id;
+    Picture picture;
+};
+
+struct DefinePath {
+    uint32 id;
+    Path   path;
+};
+
+/////////////////////
+union CanvasCommand {
+    DefineImage           define_image;
+    DefinePath            define_path;
+    DefinePicture         define_picture;
+    DefineTextBlob        define_text_blob;
+    DefineTypeface        define_typeface;
+
+    SaveCommand           save;
+    RestoreCommand        restore;
+    SaveLayerCommand      save_layer;
+    SetMatrixCommand      set_matrix;
+
+    ClipRectCommand       clip_rect;
+    ClipRoundRectCommand  clip_round_rect;
+    ClipPathCommand       clip_path;
+    ClipRegionCommand     clip_region;
+
+    DrawOvalCommand       draw_oval;
+    DrawRectCommand       draw_rect;
+    DrawRoundRectCommand  draw_round_rect;
+    DrawDoubleRoundRectCommand draw_double_round_rect;
+    DrawPathCommand       draw_path;
+    DrawPaintCommand      draw_paint;
+    DrawPointsCommand     draw_points;
+    DrawDrawableCommand   draw_drawable;
+    DrawPictureCommand    draw_picture;
+    DrawVerticesCommand   draw_vertices;
+    DrawPatchCommand      draw_patch;
+    DrawAtlasCommand      draw_atlas;
+    DrawImageCommand      draw_image;
+    DrawImageRectCommand  draw_image_rect;
+    DrawImageNineCommand  draw_image_nine;
+    DrawTextBlobCommand   draw_text_blob;
+    DrawTextCommand       draw_text;
+};
+
+struct Picture {
+    array<CanvasCommand> commands;
+	Rect                 cull_rect;
+};

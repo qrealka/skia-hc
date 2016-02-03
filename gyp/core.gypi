@@ -287,6 +287,7 @@
         '<(skia_src_path)/core/SkTypefaceCache.cpp',
         '<(skia_src_path)/core/SkTypefaceCache.h',
         '<(skia_src_path)/core/SkTypefacePriv.h',
+        '<(skia_src_path)/core/SkUnflatten.cpp',
         '<(skia_src_path)/core/SkUnPreMultiply.cpp',
         '<(skia_src_path)/core/SkUtils.cpp',
         '<(skia_src_path)/core/SkValidatingReadBuffer.cpp',
