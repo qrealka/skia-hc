@@ -426,39 +426,16 @@ struct ClipRegionCommand {
 
 /////////////////////
 
-struct DefineTypeface {
-    uint32       id;
-    array<uint8> typeface_data;
-};
-
-struct DefineImage {
-    uint32       id;
-    array<uint8> image_data;
-};
-
-struct DefineTextBlob {
-    uint32         id;
-    array<TextRun> runs;
-};
-
-struct DefinePicture {
-    uint32  id;
-    Picture picture;
-};
-
-struct DefinePath {
-    uint32 id;
-    Path   path;
+struct Context {
+    map<uint32, array<uint8>?>?   typefaces;
+    map<uint32, array<uint8>?>?   images;
+    map<uint32, array<TextRun>?>? text_blobs;
+    map<uint32, Picture?>?        pictures;
+    map<uint32, Path?>?           paths;
 };
 
 /////////////////////
 union CanvasCommand {
-    DefineImage           define_image;
-    DefinePath            define_path;
-    DefinePicture         define_picture;
-    DefineTextBlob        define_text_blob;
-    DefineTypeface        define_typeface;
-
     SaveCommand           save;
     RestoreCommand        restore;
     SaveLayerCommand      save_layer;
@@ -490,5 +467,5 @@ union CanvasCommand {
 
 struct Picture {
     array<CanvasCommand> commands;
-	Rect                 cull_rect;
+    Rect                 cull_rect;
 };

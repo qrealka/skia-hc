@@ -8,22 +8,17 @@
 #define SkMojo_DEFINED
 #ifdef SK_MOJO
 
+#include "SkCanvas.h"
 #include "SkMojo.mojom.h"
-
-class SkCanvas;
-struct SkRect;
 
 // Utility funtion to create an empty picture ready to write to.
 SkMojo::PicturePtr SkMojoCreatePicture(const SkRect& cullRect);
 
-class SkMojoContext {
-public:
-    static std::unique_ptr<SkMojoContext> New();
-    virtual ~SkMojoContext() {}
-    virtual SkCanvas* newCanvas(SkMojo::Picture* dst) = 0;
-};
+SkAutoTUnref<SkCanvas> SkMojoCreateCanvas(SkMojo::Picture*, SkMojo::Context*);
 
-bool SkMojoPlaybackPicture(const SkMojo::Picture& src, SkCanvas* dst);
+bool SkMojoPlaybackPicture(const SkMojo::Picture& src,
+                           SkMojo::Context& context,
+                           SkCanvas* dst);
 
 #endif  // SK_MOJO
 #endif  // SkMojo_DEFINED
