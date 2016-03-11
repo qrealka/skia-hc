@@ -43,6 +43,7 @@ public:
     void emitObject(SkWStream* stream,
                     const SkPDFObjNumMap& objNumMap,
                     const SkPDFSubstituteMap& substitutes) const override;
+    void dump() override;
 
 protected:
     /* Create a PDF stream with no data.  The setData method must be called to

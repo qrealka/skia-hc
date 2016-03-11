@@ -193,6 +193,8 @@ protected:
 
     static bool Find(uint32_t fontID, uint16_t glyphID, int* index);
 
+    void dump() override;
+
 private:
     sk_sp<SkTypeface> fTypeface;
 

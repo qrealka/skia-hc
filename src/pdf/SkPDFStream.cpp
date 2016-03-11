@@ -15,6 +15,11 @@
 
 SkPDFStream::~SkPDFStream() {}
 
+void SkPDFStream::dump() {
+    fCompressedData.reset(nullptr);
+    this->SkPDFDict::dump();
+}
+
 void SkPDFStream::emitObject(SkWStream* stream,
                              const SkPDFObjNumMap& objNumMap,
                              const SkPDFSubstituteMap& substitutes) const {
