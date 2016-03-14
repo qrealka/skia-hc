@@ -10,6 +10,8 @@
 #include "SkDocument.h"
 #include "SkPDFMetadata.h"
 
+class SkPDFDevice;
+
 sk_sp<SkDocument> SkPDFMakeDocument(
         SkWStream* stream,
         void (*doneProc)(SkWStream*, bool),

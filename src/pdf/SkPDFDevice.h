@@ -25,6 +25,7 @@
 class SkPDFArray;
 class SkPDFCanon;
 class SkPDFDevice;
+class SkPDFDocument;
 class SkPDFDict;
 class SkPDFFont;
 class SkPDFFormXObject;
@@ -59,20 +60,20 @@ public:
      *         while rendering, and it would be slower to be processed
      *         or sent online or to printer.  A good choice is
      *         SK_ScalarDefaultRasterDPI(72.0f).
-     *  @param SkPDFCanon.  Should be non-null, and shared by all
+     *  @param SkPDFDocument.  Should be non-null, and shared by all
      *         devices in a document.
      */
     static SkPDFDevice* Create(SkISize pageSize,
                                SkScalar rasterDpi,
-                               SkPDFCanon* canon) {
-        return new SkPDFDevice(pageSize, rasterDpi, canon, true);
+                               SkPDFDocument* doc) {
+        return new SkPDFDevice(pageSize, rasterDpi, doc, true);
     }
 
     /** Create a PDF drawing context without fipping the y-axis. */
     static SkPDFDevice* CreateUnflipped(SkISize pageSize,
                                         SkScalar rasterDpi,
-                                        SkPDFCanon* canon) {
-        return new SkPDFDevice(pageSize, rasterDpi, canon, false);
+                                        SkPDFDocument* doc) {
+        return new SkPDFDevice(pageSize, rasterDpi, doc, false);
     }
 
     virtual ~SkPDFDevice();
@@ -184,7 +185,7 @@ public:
         return *(fFontGlyphUsage.get());
     }
 
-    SkPDFCanon* getCanon() const { return fCanon; }
+    SkPDFCanon* getCanon() const;
 
 protected:
     const SkBitmap& onAccessBitmap() override {
@@ -261,12 +262,12 @@ private:
 
     SkBitmap fLegacyBitmap;
 
-    SkPDFCanon* fCanon;  // Owned by SkDocument_PDF
+    SkPDFDocument* fDocument;
     ////////////////////////////////////////////////////////////////////////////
 
     SkPDFDevice(SkISize pageSize,
                 SkScalar rasterDpi,
-                SkPDFCanon* canon,
+                SkPDFDocument* doc,
                 bool flip);
 
     ContentEntry* getLastContentEntry();
