@@ -23,6 +23,12 @@
         ],
       },
     },
+    {
+      'target_name': 'experiment',
+      'type': 'executable',
+      'sources': [ '../experimental/tools/experiment.cpp', ],
+      'dependencies': [ 'skia_lib.gyp:skia_lib', 'pdf.gyp:pdf', 'tools.gyp:proc_stats' ],
+    },
   ],
   'conditions': [
     ['skia_os == "mac"',

@@ -49,6 +49,7 @@ void SkPDFObjectSerializer::serializeObjects(SkWStream* wStream) {
         object->emitObject(wStream, fObjNumMap, fSubstituteMap);
         wStream->writeText("\nendobj\n");
         object->dump();
+        SkDebugf("DUMP\n");
         ++fNextToBeSerialized;
     }
 }

@@ -2334,11 +2334,8 @@ void SkPDFDevice::internalDrawImage(const SkMatrix& origMatrix,
         if (!pdfimage) {
             return;
         }
-        #if SK_PDF_SERIALIZE_IMAGES_EARLY // TODO(halcanary): enable.
-        sk_sp<SkData> encodedImage(image->refEncodedData());
-        if (!encodedImage) {
-            fDocument->serialize(pdfimage);
-        }
+        #if 0
+        fDocument->serialize(pdfimage);
         #endif
         fDocument->canon()->addPDFBitmap(image->uniqueID(), pdfimage.get());
     }
