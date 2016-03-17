@@ -1,12 +1,17 @@
 # Boilerplate.
-cmake_minimum_required (VERSION 3.1)   # First version with CMAKE_CXX_STANDARD.
-project (skimake)
+cmake_minimum_required (VERSION 3.1 FATAL_ERROR)   # First version with CMAKE_CXX_STANDARD.
+project (skimake CXX)
 set (CMAKE_CXX_STANDARD 11)
 
 # Default to Release mode.  We're mainly targeting Skia users, not Skia developers.
 if (NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE Release)
 endif ()
+
+if(NOT(CMAKE_VERSION LESS 3.4) AND MSVC)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    message( STATUS "CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS: ${CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS}" )
+endif()
 
 # To first approximation, the Skia library comprises all .cpp files under src/.
 file (GLOB_RECURSE srcs ../src/*.cpp)
@@ -124,10 +129,20 @@ file (GLOB_RECURSE ssse3_srcs ../src/*ssse3*.cpp ../src/*SSSE3*.cpp)
 file (GLOB_RECURSE sse41_srcs ../src/*sse4*.cpp ../src/*SSE4*.cpp)
 file (GLOB_RECURSE avx_srcs   ../src/*_avx.cpp)
 file (GLOB_RECURSE avx2_srcs  ../src/*_avx2.cpp)
+
+if (MSVC)
+set_source_files_properties(${ssse3_srcs} PROPERTIES COMPILE_FLAGS /arch:SSE2)
+set_source_files_properties(${ssse3_srcs} PROPERTIES COMPILE_DEFINITIONS  SK_CPU_SSE_LEVEL=31)
+set_source_files_properties(${sse41_srcs} PROPERTIES COMPILE_FLAGS /arch:SSE2)
+set_source_files_properties(${sse41_srcs} PROPERTIES COMPILE_DEFINITIONS SK_CPU_SSE_LEVEL=42)
+set_source_files_properties(${avx_srcs}   PROPERTIES COMPILE_FLAGS /arch:AVX)
+set_source_files_properties(${avx2_srcs}  PROPERTIES COMPILE_FLAGS /arch:AVX2)
+else()
 set_source_files_properties(${ssse3_srcs} PROPERTIES COMPILE_FLAGS -mssse3)
 set_source_files_properties(${sse41_srcs} PROPERTIES COMPILE_FLAGS -msse4.1)
 set_source_files_properties(${avx_srcs}   PROPERTIES COMPILE_FLAGS -mavx)
 set_source_files_properties(${avx2_srcs}  PROPERTIES COMPILE_FLAGS -mavx2)
+endif()
 
 # Detect our optional dependencies.
 # If we can't find them, don't build the parts of Skia that use them.
@@ -254,6 +269,9 @@ list (APPEND libs  ${OPENGL_LIBRARIES})
 # We mostly build an .so here because it helps test we've linked everything,
 # not so much that we think Skia is a good candidate to ship as a shared library.
 add_library (skia SHARED ${srcs})
+set_property(TARGET skia PROPERTY CXX_STANDARD 11)
+set_property(TARGET skia PROPERTY CXX_STANDARD_REQUIRED ON)
+set_target_properties(skia PROPERTIES LINKER_LANGUAGE CXX)
 
 target_compile_definitions(skia
     PUBLIC  ${public_defines}
@@ -268,7 +286,7 @@ target_link_libraries(skia
     PRIVATE ${libs})
 
 if (MSVC)
-    set(cc_flags "/w /GR-")
+    set(cc_flags "/D_HAS_EXCEPTIONS=0 /DGR_GL_FUNCTION_TYPE=__stdcall /D_CRT_SECURE_NO_WARNINGS /DSK_BUILD_FOR_WIN32 /wd4275 /wd4345 /wd4355 /wd4251 /GR- /EHs-c-")
 else()
     set(cc_flags "-w -fno-rtti -fno-exceptions")
 endif()
@@ -299,7 +317,11 @@ file (APPEND ${link_arguments} "-Wl,-rpath,${CMAKE_BINARY_DIR}\n")
 
 # skia_compile_arguments.txt
 set (compile_arguments ${CMAKE_BINARY_DIR}/skia_compile_arguments.txt)
+
+if (UNIX)
 file (WRITE ${compile_arguments} "--std=c++11\n")
+endif()
+
 foreach (include ${public_includes})
   get_filename_component (abs_include ${include} ABSOLUTE)
   file (APPEND ${compile_arguments} "-I${abs_include}\n")
