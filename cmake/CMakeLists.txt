@@ -286,7 +286,12 @@ target_link_libraries(skia
     PRIVATE ${libs})
 
 if (MSVC)
-    set(cc_flags "/D_HAS_EXCEPTIONS=0 /DGR_GL_FUNCTION_TYPE=__stdcall /D_CRT_SECURE_NO_WARNINGS /DSK_BUILD_FOR_WIN32 /wd4275 /wd4345 /wd4355 /wd4251 /GR- /EHs-c-")
+	target_compile_definitions(skia 
+			PRIVATE "$<$<CONFIG:RELEASE>:/DNDEBUG>"
+			PRIVATE "$<$<CONFIG:MINSIZEREL>:/DNDEBUG>"
+	)
+	target_compile_options(skia PRIVATE "/MD$<$<CONFIG:Debug>:d>")
+    set(cc_flags "/DOS_WIN /DWIN32 /D_UNICODE /DUNICODE /DGR_GL_FUNCTION_TYPE=__stdcall /D_CRT_SECURE_NO_WARNINGS /DSK_BUILD_FOR_WIN32 /wd4275 /wd4345 /wd4355 /wd4251 /GR-")
 else()
     set(cc_flags "-w -fno-rtti -fno-exceptions")
 endif()
