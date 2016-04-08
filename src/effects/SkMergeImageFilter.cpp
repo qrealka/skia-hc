@@ -42,10 +42,10 @@ void SkMergeImageFilter::initModes(const SkXfermode::Mode modes[]) {
     }
 }
 
-SkMergeImageFilter::SkMergeImageFilter(SkImageFilter* filters[], int count,
+SkMergeImageFilter::SkMergeImageFilter(sk_sp<SkImageFilter> filters[], int count,
                                        const SkXfermode::Mode modes[],
                                        const CropRect* cropRect)
-  : INHERITED(count, filters, cropRect) {
+    : INHERITED(filters, count, cropRect) {
     SkASSERT(count >= 0);
     this->initModes(modes);
 }
@@ -77,7 +77,7 @@ sk_sp<SkSpecialImage> SkMergeImageFilter::onFilterImage(SkSpecialImage* source, 
         if (!inputs[i]) {
             continue;
         }
-        const SkIRect inputBounds = SkIRect::MakeXYWH(offsets[i].fX, offsets[i].fY, 
+        const SkIRect inputBounds = SkIRect::MakeXYWH(offsets[i].fX, offsets[i].fY,
                                                       inputs[i]->width(), inputs[i]->height());
         bounds.join(inputBounds);
     }
@@ -86,7 +86,10 @@ sk_sp<SkSpecialImage> SkMergeImageFilter::onFilterImage(SkSpecialImage* source, 
     }
 
     // Apply the crop rect to the union of the inputs' bounds.
-    this->getCropRect().applyTo(bounds, ctx.ctm(), &bounds);
+    // Note that the crop rect can only reduce the bounds, since this
+    // filter does not affect transparent black.
+    bool embiggen = false;
+    this->getCropRect().applyTo(bounds, ctx.ctm(), embiggen, &bounds);
     if (!bounds.intersect(ctx.clipBounds())) {
         return nullptr;
     }
@@ -128,7 +131,7 @@ sk_sp<SkSpecialImage> SkMergeImageFilter::onFilterImage(SkSpecialImage* source, 
     return surf->makeImageSnapshot();
 }
 
-SkFlattenable* SkMergeImageFilter::CreateProc(SkReadBuffer& buffer) {
+sk_sp<SkFlattenable> SkMergeImageFilter::CreateProc(SkReadBuffer& buffer) {
     Common common;
     if (!common.unflatten(buffer, -1)) {
         return nullptr;
@@ -149,9 +152,9 @@ SkFlattenable* SkMergeImageFilter::CreateProc(SkReadBuffer& buffer) {
         if (!buffer.isValid()) {
             return nullptr;
         }
-        return Create(common.inputs(), count, modes.get(), &common.cropRect());
+        return Make(common.inputs(), count, modes.get(), &common.cropRect());
     }
-    return Create(common.inputs(), count, nullptr, &common.cropRect());
+    return Make(common.inputs(), count, nullptr, &common.cropRect());
 }
 
 void SkMergeImageFilter::flatten(SkWriteBuffer& buffer) const {
@@ -165,7 +168,7 @@ void SkMergeImageFilter::flatten(SkWriteBuffer& buffer) const {
 #ifndef SK_IGNORE_TO_STRING
 void SkMergeImageFilter::toString(SkString* str) const {
     str->appendf("SkMergeImageFilter: (");
-    
+
     for (int i = 0; i < this->countInputs(); ++i) {
         SkImageFilter* filter = this->getInput(i);
         str->appendf("%d: (", i);

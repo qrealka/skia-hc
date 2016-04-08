@@ -132,7 +132,7 @@ public:
         // To implement the old shadeSpan entry-point, we need to efficiently convert our native
         // floats into SkPMColor. The SkXfermode::D32Procs do exactly that.
         //
-        sk_sp<SkXfermode> xfer(SkXfermode::Create(SkXfermode::kSrc_Mode));
+        sk_sp<SkXfermode> xfer(SkXfermode::Make(SkXfermode::kSrc_Mode));
         fXferProc = SkXfermode::GetD32Proc(xfer.get(), 0);
     }
 
@@ -275,7 +275,7 @@ bool SkBitmapProcShader::onIsABitmap(SkBitmap* texture, SkMatrix* texM, TileMode
     return true;
 }
 
-SkFlattenable* SkBitmapProcShader::CreateProc(SkReadBuffer& buffer) {
+sk_sp<SkFlattenable> SkBitmapProcShader::CreateProc(SkReadBuffer& buffer) {
     SkMatrix lm;
     buffer.readMatrix(&lm);
     SkBitmap bm;
@@ -285,7 +285,7 @@ SkFlattenable* SkBitmapProcShader::CreateProc(SkReadBuffer& buffer) {
     bm.setImmutable();
     TileMode mx = (TileMode)buffer.readUInt();
     TileMode my = (TileMode)buffer.readUInt();
-    return SkShader::MakeBitmapShader(bm, mx, my, &lm).release();
+    return SkShader::MakeBitmapShader(bm, mx, my, &lm);
 }
 
 void SkBitmapProcShader::flatten(SkWriteBuffer& buffer) const {

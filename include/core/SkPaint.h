@@ -41,7 +41,6 @@ class SkTypeface;
     The SkPaint class holds the style and color information about how to draw
     geometries, text and bitmaps.
 */
-
 class SK_API SkPaint {
 public:
     SkPaint();
@@ -539,8 +538,10 @@ public:
                         paint
         @return         xfermode
     */
-    SkXfermode* setXfermode(SkXfermode* xfermode);
     void setXfermode(sk_sp<SkXfermode>);
+#ifdef SK_SUPPORT_LEGACY_XFERMODE_PTR
+    SkXfermode* setXfermode(SkXfermode* xfermode);
+#endif
 
     /** Create an xfermode based on the specified Mode, and assign it into the
         paint, returning the mode that was set. If the Mode is SrcOver, then
@@ -587,7 +588,9 @@ public:
                             the paint
         @return             maskfilter
     */
+#ifdef SK_SUPPORT_LEGACY_MASKFILTER_PTR
     SkMaskFilter* setMaskFilter(SkMaskFilter* maskfilter);
+#endif
     void setMaskFilter(sk_sp<SkMaskFilter>);
 
     // These attributes are for text/fonts
@@ -1082,8 +1085,14 @@ private:
     SkScalar measure_text(SkGlyphCache*, const char* text, size_t length,
                           int* count, SkRect* bounds) const;
 
-    enum class FakeGamma {
-        Off = 0, On
+    enum ScalerContextFlags : uint32_t {
+        kNone_ScalerContextFlags = 0,
+
+        kFakeGamma_ScalerContextFlag = 1 << 0,
+        kBoostContrast_ScalerContextFlag = 1 << 1,
+
+        kFakeGammaAndBoostContrast_ScalerContextFlags =
+            kFakeGamma_ScalerContextFlag | kBoostContrast_ScalerContextFlag,
     };
 
     /*
@@ -1091,12 +1100,12 @@ private:
      * SkData.  Caller is responsible for managing the lifetime of this object.
      */
     void getScalerContextDescriptor(SkAutoDescriptor*, const SkSurfaceProps& surfaceProps,
-                                    FakeGamma fakeGamma, const SkMatrix*) const;
+                                    uint32_t scalerContextFlags, const SkMatrix*) const;
 
-    SkGlyphCache* detachCache(const SkSurfaceProps* surfaceProps, FakeGamma fakeGamma,
+    SkGlyphCache* detachCache(const SkSurfaceProps* surfaceProps, uint32_t scalerContextFlags,
                               const SkMatrix*) const;
 
-    void descriptorProc(const SkSurfaceProps* surfaceProps, FakeGamma fakeGamma,
+    void descriptorProc(const SkSurfaceProps* surfaceProps, uint32_t scalerContextFlags,
                         const SkMatrix* deviceMatrix,
                         void (*proc)(SkTypeface*, const SkDescriptor*, void*),
                         void* context) const;

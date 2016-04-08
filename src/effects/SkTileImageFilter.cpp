@@ -28,9 +28,10 @@ SkImageFilter* SkTileImageFilter::Create(const SkRect& srcRect, const SkRect& ds
             return SkSafeRef(input);
         }
         CropRect cropRect(ir);
-        return SkOffsetImageFilter::Create(dstRect.x() - srcRect.x(),
-                                           dstRect.y() - srcRect.y(),
-                                           input, &cropRect);
+        return SkOffsetImageFilter::Make(dstRect.x() - srcRect.x(),
+                                         dstRect.y() - srcRect.y(),
+                                         sk_ref_sp<SkImageFilter>(input),
+                                         &cropRect).release();
     }
     return new SkTileImageFilter(srcRect, dstRect, input);
 }
@@ -82,8 +83,8 @@ bool SkTileImageFilter::onFilterImageDeprecated(Proxy* proxy, const SkBitmap& sr
             return false;
         }
         SkCanvas canvas(device);
-        canvas.drawBitmap(src, SkIntToScalar(srcOffset.x()),
-                               SkIntToScalar(srcOffset.y()));
+        canvas.drawBitmap(source, SkIntToScalar(srcOffset.x()),
+                                  SkIntToScalar(srcOffset.y()));
         subset = device->accessBitmap(false);
     }
     SkASSERT(subset.width() == srcIRect.width());
@@ -122,12 +123,12 @@ SkRect SkTileImageFilter::computeFastBounds(const SkRect& src) const {
     return fDstRect;
 }
 
-SkFlattenable* SkTileImageFilter::CreateProc(SkReadBuffer& buffer) {
+sk_sp<SkFlattenable> SkTileImageFilter::CreateProc(SkReadBuffer& buffer) {
     SK_IMAGEFILTER_UNFLATTEN_COMMON(common, 1);
     SkRect src, dst;
     buffer.readRect(&src);
     buffer.readRect(&dst);
-    return Create(src, dst, common.getInput(0));
+    return sk_sp<SkFlattenable>(Create(src, dst, common.getInput(0).get()));
 }
 
 void SkTileImageFilter::flatten(SkWriteBuffer& buffer) const {

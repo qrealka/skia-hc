@@ -36,9 +36,9 @@ GrVkPipelineStateBuilder::GrVkPipelineStateBuilder(GrVkGpu* gpu,
                                                    const GrPipeline& pipeline,
                                                    const GrPrimitiveProcessor& primProc,
                                                    const GrVkProgramDesc& desc)
-    : INHERITED(pipeline, primProc, desc) 
+    : INHERITED(pipeline, primProc, desc)
     , fGpu(gpu)
-    , fVaryingHandler(this) 
+    , fVaryingHandler(this)
     , fUniformHandler(this) {
 }
 
@@ -50,7 +50,11 @@ const GrGLSLCaps* GrVkPipelineStateBuilder::glslCaps() const {
 }
 
 void GrVkPipelineStateBuilder::finalizeFragmentOutputColor(GrGLSLShaderVar& outputColor) {
-    outputColor.setLayoutQualifier("location = 0");
+    outputColor.setLayoutQualifier("location = 0, index = 0");
+}
+
+void GrVkPipelineStateBuilder::finalizeFragmentSecondaryColor(GrGLSLShaderVar& outputColor) {
+    outputColor.setLayoutQualifier("location = 0, index = 1");
 }
 
 VkShaderStageFlags visibility_to_vk_stage_flags(uint32_t visibility) {
@@ -95,7 +99,7 @@ bool GrVkPipelineStateBuilder::CreateVkShaderModule(const GrVkGpu* gpu,
     moduleCreateInfo.pNext = nullptr;
     moduleCreateInfo.flags = 0;
 
-    shaderc_compilation_result_t result;
+    shaderc_compilation_result_t result = nullptr;
 
     if (gpu->vkCaps().canUseGLSLForShaderModule()) {
         moduleCreateInfo.codeSize = strlen(shaderString.c_str());
@@ -105,7 +109,6 @@ bool GrVkPipelineStateBuilder::CreateVkShaderModule(const GrVkGpu* gpu,
         shaderc_compiler_t compiler = gpu->shadercCompiler();
 
         shaderc_compile_options_t options = shaderc_compile_options_initialize();
-        shaderc_compile_options_set_forced_version_profile(options, 140, shaderc_profile_none);
 
         shaderc_shader_kind shadercStage = vk_shader_stage_to_shaderc_kind(stage);
         result = shaderc_compile_into_spv(compiler,
@@ -167,7 +170,7 @@ GrVkPipelineState* GrVkPipelineStateBuilder::finalize(GrPrimitiveType primitiveT
         UniformHandle uniHandle = fSamplerUniforms[i];
         GrVkUniformHandler::UniformInfo uniformInfo = fUniformHandler.getUniformInfo(uniHandle);
         SkASSERT(kSampler2D_GrSLType == uniformInfo.fVariable.getType());
-        SkASSERT(0 == uniformInfo.fSetNumber);
+        SkASSERT(GrVkUniformHandler::kSamplerDescSet == uniformInfo.fSetNumber);
         SkASSERT(uniformInfo.fBinding == i);
         dsSamplerBindings[i].binding = uniformInfo.fBinding;
         dsSamplerBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -200,12 +203,12 @@ GrVkPipelineState* GrVkPipelineStateBuilder::finalize(GrPrimitiveType primitiveT
     memset(&dsUniBindings, 0, 2 * sizeof(VkDescriptorSetLayoutBinding));
     dsUniBindings[0].binding = GrVkUniformHandler::kVertexBinding;
     dsUniBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    dsUniBindings[0].descriptorCount = fUniformHandler.hasVertexUniforms() ? 1 : 0;
+    dsUniBindings[0].descriptorCount = 1;
     dsUniBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     dsUniBindings[0].pImmutableSamplers = nullptr;
     dsUniBindings[1].binding = GrVkUniformHandler::kFragBinding;
     dsUniBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    dsUniBindings[1].descriptorCount = fUniformHandler.hasFragmentUniforms() ? 1 : 0;
+    dsUniBindings[1].descriptorCount = 1;
     dsUniBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     dsUniBindings[1].pImmutableSamplers = nullptr;
 
@@ -281,6 +284,7 @@ GrVkPipelineState* GrVkPipelineStateBuilder::finalize(GrPrimitiveType primitiveT
                                                                    nullptr));
         GR_VK_CALL(fGpu->vkInterface(), DestroyDescriptorSetLayout(fGpu->device(), dsLayout[1],
                                                                    nullptr));
+        this->cleanupFragmentProcessors();
         return nullptr;
     }
 

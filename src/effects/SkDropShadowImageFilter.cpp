@@ -16,9 +16,9 @@
 
 SkDropShadowImageFilter::SkDropShadowImageFilter(SkScalar dx, SkScalar dy,
                                                  SkScalar sigmaX, SkScalar sigmaY, SkColor color,
-                                                 ShadowMode shadowMode, SkImageFilter* input,
+                                                 ShadowMode shadowMode, sk_sp<SkImageFilter> input,
                                                  const CropRect* cropRect)
-    : INHERITED(1, &input, cropRect)
+    : INHERITED(&input, 1, cropRect)
     , fDx(dx)
     , fDy(dy)
     , fSigmaX(sigmaX)
@@ -27,7 +27,7 @@ SkDropShadowImageFilter::SkDropShadowImageFilter(SkScalar dx, SkScalar dy,
     , fShadowMode(shadowMode) {
 }
 
-SkFlattenable* SkDropShadowImageFilter::CreateProc(SkReadBuffer& buffer) {
+sk_sp<SkFlattenable> SkDropShadowImageFilter::CreateProc(SkReadBuffer& buffer) {
     SK_IMAGEFILTER_UNFLATTEN_COMMON(common, 1);
     SkScalar dx = buffer.readScalar();
     SkScalar dy = buffer.readScalar();
@@ -37,8 +37,7 @@ SkFlattenable* SkDropShadowImageFilter::CreateProc(SkReadBuffer& buffer) {
     ShadowMode shadowMode = buffer.isVersionLT(SkReadBuffer::kDropShadowMode_Version) ?
                             kDrawShadowAndForeground_ShadowMode :
                             static_cast<ShadowMode>(buffer.readInt());
-    return Create(dx, dy, sigmaX, sigmaY, color, shadowMode, common.getInput(0),
-                  &common.cropRect());
+    return Make(dx, dy, sigmaX, sigmaY, color, shadowMode, common.getInput(0), &common.cropRect());
 }
 
 void SkDropShadowImageFilter::flatten(SkWriteBuffer& buffer) const {
@@ -84,9 +83,8 @@ sk_sp<SkSpecialImage> SkDropShadowImageFilter::onFilterImage(SkSpecialImage* sou
     sigma.fX = SkMaxScalar(0, sigma.fX);
     sigma.fY = SkMaxScalar(0, sigma.fY);
 
-    SkAutoTUnref<SkImageFilter> blurFilter(SkBlurImageFilter::Create(sigma.fX, sigma.fY));
     SkPaint paint;
-    paint.setImageFilter(blurFilter.get());
+    paint.setImageFilter(SkBlurImageFilter::Make(sigma.fX, sigma.fY, nullptr));
     paint.setColorFilter(SkColorFilter::MakeModeFilter(fColor, SkXfermode::kSrcIn_Mode));
     paint.setXfermodeMode(SkXfermode::kSrcOver_Mode);
 

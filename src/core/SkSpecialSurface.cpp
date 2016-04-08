@@ -70,7 +70,7 @@ public:
                             SkPixelRef* pr,
                             const SkIRect& subset,
                             const SkSurfaceProps* props)
-        : INHERITED(proxy, subset, props) {   
+        : INHERITED(proxy, subset, props) {
         const SkImageInfo& info = pr->info();
 
         fBitmap.setInfo(info, info.minRowBytes());
@@ -82,7 +82,8 @@ public:
     ~SkSpecialSurface_Raster() override { }
 
     sk_sp<SkSpecialImage> onMakeImageSnapshot() override {
-        return SkSpecialImage::MakeFromRaster(this->proxy(), this->subset(), fBitmap);
+        return SkSpecialImage::MakeFromRaster(this->proxy(), this->subset(), fBitmap,
+                                              &this->props());
     }
 
 private:
@@ -139,7 +140,8 @@ public:
 
     sk_sp<SkSpecialImage> onMakeImageSnapshot() override {
         return SkSpecialImage::MakeFromGpu(this->proxy(), this->subset(),
-                                           kNeedNewImageUniqueID_SpecialImage, fTexture);
+                                           kNeedNewImageUniqueID_SpecialImage, fTexture,
+                                           &this->props());
     }
 
 private:
@@ -148,7 +150,7 @@ private:
     typedef SkSpecialSurface_Base INHERITED;
 };
 
-sk_sp<SkSpecialSurface> SkSpecialSurface::MakeFromTexture(SkImageFilter::Proxy* proxy, 
+sk_sp<SkSpecialSurface> SkSpecialSurface::MakeFromTexture(SkImageFilter::Proxy* proxy,
                                                           const SkIRect& subset,
                                                           GrTexture* texture,
                                                           const SkSurfaceProps* props) {

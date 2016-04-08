@@ -70,6 +70,9 @@ DEFINE_int32(shard,  0, "Which shard do I run?");
 DEFINE_bool(simpleCodec, false, "Only decode images to native scale");
 
 using namespace DM;
+using sk_gpu_test::GrContextFactory;
+using sk_gpu_test::GLTestContext;
+using sk_gpu_test::ContextInfo;
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
@@ -812,12 +815,17 @@ static Sink* create_sink(const SkCommandLineConfig* config) {
 #if SK_SUPPORT_GPU
     if (gpu_supported()) {
         if (const SkCommandLineConfigGpu* gpuConfig = config->asConfigGpu()) {
-            GrContextFactory::GLContextType contextType = gpuConfig->getContextType();
-            GrContextFactory::GLContextOptions contextOptions =
-                    GrContextFactory::kNone_GLContextOptions;
+            GrContextFactory::ContextType contextType = gpuConfig->getContextType();
+            GrContextFactory::ContextOptions contextOptions =
+                    GrContextFactory::kNone_ContextOptions;
             if (gpuConfig->getUseNVPR()) {
-                contextOptions = static_cast<GrContextFactory::GLContextOptions>(
-                    contextOptions | GrContextFactory::kEnableNVPR_GLContextOptions);
+                contextOptions = static_cast<GrContextFactory::ContextOptions>(
+                    contextOptions | GrContextFactory::kEnableNVPR_ContextOptions);
+            }
+            if (SkColorAndProfileAreGammaCorrect(gpuConfig->getColorType(),
+                                                 gpuConfig->getProfileType())) {
+                contextOptions = static_cast<GrContextFactory::ContextOptions>(
+                    contextOptions | GrContextFactory::kRequireSRGBSupport_ContextOptions);
             }
             GrContextFactory testFactory;
             if (!testFactory.get(contextType, contextOptions)) {
@@ -843,8 +851,7 @@ static Sink* create_sink(const SkCommandLineConfig* config) {
         SINK("8888", RasterSink, kN32_SkColorType);
         SINK("srgb", RasterSink, kN32_SkColorType, kSRGB_SkColorProfileType);
         SINK("f16",  RasterSink, kRGBA_F16_SkColorType);
-        SINK("pdf",  PDFSink, "Pdfium");
-        SINK("pdf_poppler",  PDFSink, "Poppler");
+        SINK("pdf",  PDFSink);
         SINK("skp",  SKPSink);
         SINK("svg",  SVGSink);
         SINK("null", NullSink);
@@ -1162,8 +1169,7 @@ struct Task {
                             const SkBitmap* bitmap) {
         bool gammaCorrect = false;
         if (bitmap) {
-            gammaCorrect = bitmap->profileType() == kSRGB_SkColorProfileType
-                        || bitmap->  colorType() == kRGBA_F16_SkColorType;
+            gammaCorrect = SkImageInfoIsGammaCorrect(bitmap->info());
         }
 
         JsonWriter::BitmapResult result;
@@ -1409,89 +1415,52 @@ int dm_main() {
 // TODO: currently many GPU tests are declared outside SK_SUPPORT_GPU guards.
 // Thus we export the empty RunWithGPUTestContexts when SK_SUPPORT_GPU=0.
 namespace skiatest {
-namespace {
-typedef void(*TestWithGrContext)(skiatest::Reporter*, GrContext*);
-typedef void(*TestWithGrContextAndGLContext)(skiatest::Reporter*, GrContext*, SkGLContext*);
-#if SK_SUPPORT_GPU
-template<typename T>
-void call_test(T test, skiatest::Reporter* reporter, const GrContextFactory::ContextInfo& context);
-template<>
-void call_test(TestWithGrContext test, skiatest::Reporter* reporter,
-               const GrContextFactory::ContextInfo& context) {
-    test(reporter, context.fGrContext);
-}
-template<>
-void call_test(TestWithGrContextAndGLContext test, skiatest::Reporter* reporter,
-               const GrContextFactory::ContextInfo& context) {
-    test(reporter, context.fGrContext, context.fGLContext);
-}
-#endif
-} // namespace
 
-template<typename T>
-void RunWithGPUTestContexts(T test, GPUTestContexts testContexts, Reporter* reporter,
-                            GrContextFactory* factory) {
 #if SK_SUPPORT_GPU
-    // Iterate over context types, except use "native" instead of explicitly trying OpenGL and
-    // OpenGL ES. Do not use GLES on desktop, since tests do not account for not fixing
-    // http://skbug.com/2809
-    GrContextFactory::GLContextType contextTypes[] = {
-        GrContextFactory::kNative_GLContextType,
-#if SK_ANGLE
-#ifdef SK_BUILD_FOR_WIN
-        GrContextFactory::kANGLE_GLContextType,
+bool IsGLContextType(sk_gpu_test::GrContextFactory::ContextType type) {
+    return kOpenGL_GrBackend == GrContextFactory::ContextTypeBackend(type);
+}
+bool IsRenderingGLContextType(sk_gpu_test::GrContextFactory::ContextType type) {
+    return IsGLContextType(type) && GrContextFactory::IsRenderingContext(type);
+}
+bool IsNullGLContextType(sk_gpu_test::GrContextFactory::ContextType type) {
+    return type == GrContextFactory::kNullGL_ContextType;
+}
+#else
+bool IsGLContextType(int) { return false; }
+bool IsRenderingGLContextType(int) { return false; }
+bool IsNullGLContextType(int) { return false; }
 #endif
-        GrContextFactory::kANGLE_GL_GLContextType,
-#endif
-#if SK_COMMAND_BUFFER
-        GrContextFactory::kCommandBuffer_GLContextType,
-#endif
-#if SK_MESA
-        GrContextFactory::kMESA_GLContextType,
-#endif
-        GrContextFactory::kNull_GLContextType,
-        GrContextFactory::kDebug_GLContextType,
-    };
-    static_assert(SK_ARRAY_COUNT(contextTypes) == GrContextFactory::kGLContextTypeCnt - 2,
-                  "Skipping unexpected GLContextType for GPU tests");
 
-    for (auto& contextType : contextTypes) {
-        int contextSelector = kNone_GPUTestContexts;
-        if (GrContextFactory::IsRenderingGLContext(contextType)) {
-            contextSelector |= kAllRendering_GPUTestContexts;
-        } else if (contextType == GrContextFactory::kNative_GLContextType) {
-            contextSelector |= kNative_GPUTestContexts;
-        } else if (contextType == GrContextFactory::kNull_GLContextType) {
-            contextSelector |= kNull_GPUTestContexts;
-        } else if (contextType == GrContextFactory::kDebug_GLContextType) {
-            contextSelector |= kDebug_GPUTestContexts;
-        }
-        if ((testContexts & contextSelector) == 0) {
+void RunWithGPUTestContexts(GrContextTestFn* test, GrContextTypeFilterFn* contextTypeFilter,
+                            Reporter* reporter, GrContextFactory* factory) {
+#if SK_SUPPORT_GPU
+
+    for (int typeInt = 0; typeInt < GrContextFactory::kContextTypeCnt; ++typeInt) {
+        GrContextFactory::ContextType contextType = (GrContextFactory::ContextType) typeInt;
+        ContextInfo ctxInfo = factory->getContextInfo(contextType);
+        if (!(*contextTypeFilter)(contextType)) {
             continue;
         }
-        GrContextFactory::ContextInfo context = factory->getContextInfo(contextType);
-        if (context.fGrContext) {
-            call_test(test, reporter, context);
+        // Use "native" instead of explicitly trying OpenGL and OpenGL ES. Do not use GLES on,
+        // desktop since tests do not account for not fixing http://skbug.com/2809
+        if (contextType == GrContextFactory::kGL_ContextType ||
+            contextType == GrContextFactory::kGLES_ContextType) {
+            if (contextType != GrContextFactory::kNativeGL_ContextType) {
+                continue;
+            }
         }
-        context = factory->getContextInfo(contextType,
-                                          GrContextFactory::kEnableNVPR_GLContextOptions);
-        if (context.fGrContext) {
-            call_test(test, reporter, context);
+        if (ctxInfo.fGrContext) {
+            (*test)(reporter, ctxInfo);
+        }
+        ctxInfo = factory->getContextInfo(contextType,
+                                          GrContextFactory::kEnableNVPR_ContextOptions);
+        if (ctxInfo.fGrContext) {
+            (*test)(reporter, ctxInfo);
         }
     }
 #endif
 }
-
-template
-void RunWithGPUTestContexts<TestWithGrContext>(TestWithGrContext test,
-                                               GPUTestContexts testContexts,
-                                               Reporter* reporter,
-                                               GrContextFactory* factory);
-template
-void RunWithGPUTestContexts<TestWithGrContextAndGLContext>(TestWithGrContextAndGLContext test,
-                                                           GPUTestContexts testContexts,
-                                                           Reporter* reporter,
-                                                           GrContextFactory* factory);
 } // namespace skiatest
 
 #if !defined(SK_BUILD_FOR_IOS)

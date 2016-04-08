@@ -377,7 +377,7 @@ public:
     const Attribute* inEllipseOffsets0() const { return fInEllipseOffsets0; }
     const Attribute* inEllipseOffsets1() const { return fInEllipseOffsets1; }
     const SkMatrix& viewMatrix() const { return fViewMatrix; }
-    
+
     class GLSLProcessor : public GrGLSLGeometryProcessor {
     public:
         GLSLProcessor()
@@ -530,12 +530,12 @@ GrDrawBatch* GrOvalRenderer::CreateOvalBatch(GrColor color,
     if (SkScalarNearlyEqual(oval.width(), oval.height()) && circle_stays_circle(viewMatrix)) {
         return CreateCircleBatch(color, viewMatrix, oval, stroke);
     }
-    
+
     // if we have shader derivative support, render as device-independent
     if (shaderCaps->shaderDerivativeSupport()) {
         return CreateDIEllipseBatch(color, viewMatrix, oval, stroke);
     }
-    
+
     // otherwise axis-aligned ellipses only
     if (viewMatrix.rectStaysRect()) {
         return CreateEllipseBatch(color, viewMatrix, oval, stroke);
@@ -581,7 +581,7 @@ public:
         return string;
     }
 
-    void computePipelineOptimizations(GrInitInvariantOutput* color, 
+    void computePipelineOptimizations(GrInitInvariantOutput* color,
                                       GrInitInvariantOutput* coverage,
                                       GrBatchToXPOverrides* overrides) const override {
         // When this is called on a batch, there is only one geometry bundle
@@ -606,8 +606,6 @@ private:
 
         // Setup geometry processor
         SkAutoTUnref<GrGeometryProcessor> gp(new CircleGeometryProcessor(fStroked, localMatrix));
-
-        target->initDraw(gp);
 
         int instanceCount = fGeoData.count();
         size_t vertexStride = gp->getVertexStride();
@@ -656,7 +654,7 @@ private:
 
             verts += kVerticesPerQuad;
         }
-        helper.recordDraw(target);
+        helper.recordDraw(target, gp);
     }
 
     bool onCombineIfPossible(GrBatch* t, const GrCaps& caps) override {
@@ -765,7 +763,7 @@ public:
 
     const char* name() const override { return "EllipseBatch"; }
 
-    void computePipelineOptimizations(GrInitInvariantOutput* color, 
+    void computePipelineOptimizations(GrInitInvariantOutput* color,
                                       GrInitInvariantOutput* coverage,
                                       GrBatchToXPOverrides* overrides) const override {
         // When this is called on a batch, there is only one geometry bundle
@@ -792,8 +790,6 @@ private:
 
         // Setup geometry processor
         SkAutoTUnref<GrGeometryProcessor> gp(new EllipseGeometryProcessor(fStroked, localMatrix));
-
-        target->initDraw(gp);
 
         int instanceCount = fGeoData.count();
         QuadHelper helper;
@@ -847,7 +843,7 @@ private:
 
             verts += kVerticesPerQuad;
         }
-        helper.recordDraw(target);
+        helper.recordDraw(target, gp);
     }
 
     bool onCombineIfPossible(GrBatch* t, const GrCaps& caps) override {
@@ -990,7 +986,7 @@ public:
 
     const char* name() const override { return "DIEllipseBatch"; }
 
-    void computePipelineOptimizations(GrInitInvariantOutput* color, 
+    void computePipelineOptimizations(GrInitInvariantOutput* color,
                                       GrInitInvariantOutput* coverage,
                                       GrBatchToXPOverrides* overrides) const override {
         // When this is called on a batch, there is only one geometry bundle
@@ -1010,8 +1006,6 @@ private:
         // Setup geometry processor
         SkAutoTUnref<GrGeometryProcessor> gp(new DIEllipseGeometryProcessor(this->viewMatrix(),
                                                                             this->style()));
-
-        target->initDraw(gp);
 
         int instanceCount = fGeoData.count();
         size_t vertexStride = gp->getVertexStride();
@@ -1061,9 +1055,9 @@ private:
 
             verts += kVerticesPerQuad;
         }
-        helper.recordDraw(target);
+        helper.recordDraw(target, gp);
     }
-    
+
     DIEllipseBatch(const Geometry& geometry, const SkRect& bounds) : INHERITED(ClassID()) {
         fGeoData.push_back(geometry);
 
@@ -1251,7 +1245,7 @@ public:
 
     const char* name() const override { return "RRectCircleBatch"; }
 
-    void computePipelineOptimizations(GrInitInvariantOutput* color, 
+    void computePipelineOptimizations(GrInitInvariantOutput* color,
                                       GrInitInvariantOutput* coverage,
                                       GrBatchToXPOverrides* overrides) const override {
         // When this is called on a batch, there is only one geometry bundle
@@ -1277,8 +1271,6 @@ private:
 
         // Setup geometry processor
         SkAutoTUnref<GrGeometryProcessor> gp(new CircleGeometryProcessor(fStroked, localMatrix));
-
-        target->initDraw(gp);
 
         int instanceCount = fGeoData.count();
         size_t vertexStride = gp->getVertexStride();
@@ -1347,7 +1339,7 @@ private:
             }
         }
 
-        helper.recordDraw(target);
+        helper.recordDraw(target, gp);
     }
 
     bool onCombineIfPossible(GrBatch* t, const GrCaps& caps) override {
@@ -1400,7 +1392,7 @@ public:
 
     const char* name() const override { return "RRectEllipseRendererBatch"; }
 
-    void computePipelineOptimizations(GrInitInvariantOutput* color, 
+    void computePipelineOptimizations(GrInitInvariantOutput* color,
                                       GrInitInvariantOutput* coverage,
                                       GrBatchToXPOverrides* overrides) const override {
         // When this is called on a batch, there is only one geometry bundle
@@ -1425,8 +1417,6 @@ private:
 
         // Setup geometry processor
         SkAutoTUnref<GrGeometryProcessor> gp(new EllipseGeometryProcessor(fStroked, localMatrix));
-
-        target->initDraw(gp);
 
         int instanceCount = fGeoData.count();
         size_t vertexStride = gp->getVertexStride();
@@ -1506,7 +1496,7 @@ private:
                 verts++;
             }
         }
-        helper.recordDraw(target);
+        helper.recordDraw(target, gp);
     }
 
     bool onCombineIfPossible(GrBatch* t, const GrCaps& caps) override {

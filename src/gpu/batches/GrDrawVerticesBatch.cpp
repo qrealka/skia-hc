@@ -65,7 +65,7 @@ GrDrawVerticesBatch::GrDrawVerticesBatch(const Geometry& geometry, GrPrimitiveTy
     this->setBounds(bounds);
 }
 
-void GrDrawVerticesBatch::computePipelineOptimizations(GrInitInvariantOutput* color, 
+void GrDrawVerticesBatch::computePipelineOptimizations(GrInitInvariantOutput* color,
                                                        GrInitInvariantOutput* coverage,
                                                        GrBatchToXPOverrides* overrides) const {
     // When this is called on a batch, there is only one geometry bundle
@@ -97,8 +97,6 @@ void GrDrawVerticesBatch::onPrepareDraws(Target* target) const {
     SkAutoTUnref<const GrGeometryProcessor> gp(
         set_vertex_attributes(hasLocalCoords, &colorOffset, &texOffset, fViewMatrix,
                               fCoverageIgnored));
-    target->initDraw(gp);
-
     size_t vertexStride = gp->getVertexStride();
 
     SkASSERT(vertexStride == sizeof(SkPoint) + (hasLocalCoords ? sizeof(SkPoint) : 0)
@@ -164,7 +162,7 @@ void GrDrawVerticesBatch::onPrepareDraws(Target* target) const {
     } else {
         mesh.init(this->primitiveType(), vertexBuffer, firstVertex, fVertexCount);
     }
-    target->draw(mesh);
+    target->draw(gp, mesh);
 }
 
 bool GrDrawVerticesBatch::onCombineIfPossible(GrBatch* t, const GrCaps& caps) {

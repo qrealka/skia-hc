@@ -30,9 +30,9 @@
 
 SkMorphologyImageFilter::SkMorphologyImageFilter(int radiusX,
                                                  int radiusY,
-                                                 SkImageFilter* input,
+                                                 sk_sp<SkImageFilter> input,
                                                  const CropRect* cropRect)
-    : INHERITED(1, &input, cropRect)
+    : INHERITED(&input, 1, cropRect)
     , fRadius(SkISize::Make(radiusX, radiusY)) {
 }
 
@@ -72,18 +72,18 @@ SkIRect SkMorphologyImageFilter::onFilterNodeBounds(const SkIRect& src, const Sk
     return src.makeOutset(SkScalarCeilToInt(radius.x()), SkScalarCeilToInt(radius.y()));
 }
 
-SkFlattenable* SkErodeImageFilter::CreateProc(SkReadBuffer& buffer) {
+sk_sp<SkFlattenable> SkErodeImageFilter::CreateProc(SkReadBuffer& buffer) {
     SK_IMAGEFILTER_UNFLATTEN_COMMON(common, 1);
     const int width = buffer.readInt();
     const int height = buffer.readInt();
-    return Create(width, height, common.getInput(0), &common.cropRect());
+    return Make(width, height, common.getInput(0), &common.cropRect());
 }
 
-SkFlattenable* SkDilateImageFilter::CreateProc(SkReadBuffer& buffer) {
+sk_sp<SkFlattenable> SkDilateImageFilter::CreateProc(SkReadBuffer& buffer) {
     SK_IMAGEFILTER_UNFLATTEN_COMMON(common, 1);
     const int width = buffer.readInt();
     const int height = buffer.readInt();
-    return Create(width, height, common.getInput(0), &common.cropRect());
+    return Make(width, height, common.getInput(0), &common.cropRect());
 }
 
 #ifndef SK_IGNORE_TO_STRING
@@ -370,6 +370,7 @@ static void apply_morphology_rect(GrDrawContext* drawContext,
                                   float bounds[2],
                                   Gr1DKernelEffect::Direction direction) {
     GrPaint paint;
+    // SRGBTODO: AllowSRGBInputs?
     paint.addColorFragmentProcessor(GrMorphologyEffect::Create(texture,
                                                                direction,
                                                                radius,
@@ -389,6 +390,7 @@ static void apply_morphology_rect_no_bounds(GrDrawContext* drawContext,
                                             GrMorphologyEffect::MorphologyType morphType,
                                             Gr1DKernelEffect::Direction direction) {
     GrPaint paint;
+    // SRGBTODO: AllowSRGBInputs?
     paint.addColorFragmentProcessor(GrMorphologyEffect::Create(texture,
                                                                direction,
                                                                radius,
@@ -511,14 +513,13 @@ static sk_sp<SkSpecialImage> apply_morphology(SkSpecialImage* input,
     return SkSpecialImage::MakeFromGpu(input->internal_getProxy(),
                                        SkIRect::MakeWH(rect.width(), rect.height()),
                                        kNeedNewImageUniqueID_SpecialImage,
-                                       srcTexture);
+                                       srcTexture, &input->props());
 }
 #endif
 
-sk_sp<SkSpecialImage> SkMorphologyImageFilter::filterImageGeneric(bool dilate,
-                                                                  SkSpecialImage* source,
-                                                                  const Context& ctx,
-                                                                  SkIPoint* offset) const {
+sk_sp<SkSpecialImage> SkMorphologyImageFilter::onFilterImage(SkSpecialImage* source,
+                                                             const Context& ctx,
+                                                             SkIPoint* offset) const {
     SkIPoint inputOffset = SkIPoint::Make(0, 0);
     sk_sp<SkSpecialImage> input(this->filterInput(0, source, ctx, &inputOffset));
     if (!input) {
@@ -552,8 +553,8 @@ sk_sp<SkSpecialImage> SkMorphologyImageFilter::filterImageGeneric(bool dilate,
 
 #if SK_SUPPORT_GPU
     if (input->peekTexture() && input->peekTexture()->getContext()) {
-        auto type = dilate ? GrMorphologyEffect::kDilate_MorphologyType
-                           : GrMorphologyEffect::kErode_MorphologyType;
+        auto type = (kDilate_Op == this->op()) ? GrMorphologyEffect::kDilate_MorphologyType
+                                               : GrMorphologyEffect::kErode_MorphologyType;
         sk_sp<SkSpecialImage> result(apply_morphology(input.get(), srcBounds, type,
                                                       SkISize::Make(width, height)));
         if (result) {
@@ -586,7 +587,7 @@ sk_sp<SkSpecialImage> SkMorphologyImageFilter::filterImageGeneric(bool dilate,
 
     SkMorphologyImageFilter::Proc procX, procY;
 
-    if (dilate) {
+    if (kDilate_Op == this->op()) {
         procX = SkOpts::dilate_x;
         procY = SkOpts::dilate_y;
     } else {
@@ -611,7 +612,7 @@ sk_sp<SkSpecialImage> SkMorphologyImageFilter::filterImageGeneric(bool dilate,
         call_proc_X(procX, inputPixmap, &dst, width, srcBounds);
     } else if (height > 0) {
         call_proc_Y(procY,
-                    inputPixmap.addr32(srcBounds.left(), srcBounds.top()), 
+                    inputPixmap.addr32(srcBounds.left(), srcBounds.top()),
                     inputPixmap.rowBytesAsPixels(),
                     &dst, height, srcBounds);
     }
@@ -620,16 +621,5 @@ sk_sp<SkSpecialImage> SkMorphologyImageFilter::filterImageGeneric(bool dilate,
 
     return SkSpecialImage::MakeFromRaster(source->internal_getProxy(),
                                           SkIRect::MakeWH(bounds.width(), bounds.height()),
-                                          dst);
+                                          dst, &source->props());
 }
-
-sk_sp<SkSpecialImage> SkDilateImageFilter::onFilterImage(SkSpecialImage* source, const Context& ctx,
-                                                         SkIPoint* offset) const {
-    return this->filterImageGeneric(true, source, ctx, offset);
-}
-
-sk_sp<SkSpecialImage> SkErodeImageFilter::onFilterImage(SkSpecialImage* source, const Context& ctx,
-                                                        SkIPoint* offset) const {
-    return this->filterImageGeneric(false, source, ctx, offset);
-}
-

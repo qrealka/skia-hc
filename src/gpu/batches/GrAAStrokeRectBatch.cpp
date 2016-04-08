@@ -62,7 +62,7 @@ public:
 
     const char* name() const override { return "AAStrokeRect"; }
 
-    void computePipelineOptimizations(GrInitInvariantOutput* color, 
+    void computePipelineOptimizations(GrInitInvariantOutput* color,
                                       GrInitInvariantOutput* coverage,
                                       GrBatchToXPOverrides* overrides) const override {
         // When this is called on a batch, there is only one geometry bundle
@@ -192,8 +192,6 @@ void AAStrokeRectBatch::onPrepareDraws(Target* target) const {
         return;
     }
 
-    target->initDraw(gp);
-
     size_t vertexStride = gp->getVertexStride();
 
     SkASSERT(canTweakAlphaForCoverage ?
@@ -231,7 +229,7 @@ void AAStrokeRectBatch::onPrepareDraws(Target* target) const {
                                            args.fDegenerate,
                                            canTweakAlphaForCoverage);
     }
-    helper.recordDraw(target);
+    helper.recordDraw(target, gp);
 }
 
 const GrBuffer* AAStrokeRectBatch::GetIndexBuffer(GrResourceProvider* resourceProvider,

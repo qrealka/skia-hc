@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2012 Google Inc.
  *
@@ -32,7 +31,6 @@ SkReadBuffer::SkReadBuffer() {
     fTFArray = nullptr;
     fTFCount = 0;
 
-    fFactoryTDArray = nullptr;
     fFactoryArray = nullptr;
     fFactoryCount = 0;
     fBitmapDecoder = nullptr;
@@ -51,7 +49,6 @@ SkReadBuffer::SkReadBuffer(const void* data, size_t size) {
     fTFArray = nullptr;
     fTFCount = 0;
 
-    fFactoryTDArray = nullptr;
     fFactoryArray = nullptr;
     fFactoryCount = 0;
     fBitmapDecoder = nullptr;
@@ -72,7 +69,6 @@ SkReadBuffer::SkReadBuffer(SkStream* stream) {
     fTFArray = nullptr;
     fTFCount = 0;
 
-    fFactoryTDArray = nullptr;
     fFactoryArray = nullptr;
     fFactoryCount = 0;
     fBitmapDecoder = nullptr;
@@ -92,10 +88,6 @@ bool SkReadBuffer::readBool() {
 
 SkColor SkReadBuffer::readColor() {
     return fReader.readInt();
-}
-
-SkFixed SkReadBuffer::readFixed() {
-    return fReader.readS32();
 }
 
 int32_t SkReadBuffer::readInt() {
@@ -351,17 +343,6 @@ SkFlattenable* SkReadBuffer::readFlattenable(SkFlattenable::Type ft) {
             return nullptr;
         }
         factory = fFactoryArray[index];
-    } else if (fFactoryTDArray) {
-        int32_t index = fReader.readU32();
-        if (0 == index) {
-            return nullptr; // writer failed to give us the flattenable
-        }
-        index -= 1;     // we stored the index-base-1
-        if ((unsigned)index >= (unsigned)fFactoryCount) {
-            this->validate(false);
-            return nullptr;
-        }
-        factory = (*fFactoryTDArray)[index];
     } else {
         factory = (SkFlattenable::Factory)readFunctionPtr();
         if (nullptr == factory) {
@@ -371,7 +352,7 @@ SkFlattenable* SkReadBuffer::readFlattenable(SkFlattenable::Type ft) {
 
     // if we get here, factory may still be null, but if that is the case, the
     // failure was ours, not the writer.
-    SkFlattenable* obj = nullptr;
+    sk_sp<SkFlattenable> obj;
     uint32_t sizeRecorded = fReader.readU32();
     if (factory) {
         size_t offset = fReader.offset();
@@ -386,7 +367,7 @@ SkFlattenable* SkReadBuffer::readFlattenable(SkFlattenable::Type ft) {
         // we must skip the remaining data
         fReader.skip(sizeRecorded);
     }
-    return obj;
+    return obj.release();
 }
 
 /**
@@ -395,10 +376,6 @@ SkFlattenable* SkReadBuffer::readFlattenable(SkFlattenable::Type ft) {
  */
 void SkReadBuffer::skipFlattenable() {
     if (fFactoryCount > 0) {
-        if (0 == fReader.readU32()) {
-            return;
-        }
-    } else if (fFactoryTDArray) {
         if (0 == fReader.readU32()) {
             return;
         }

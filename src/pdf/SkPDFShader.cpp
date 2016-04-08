@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2011 Google Inc.
  *
@@ -431,7 +430,7 @@ public:
     SkIRect fBBox;
 
     SkBitmap fImage;
-    uint32_t fPixelGeneration;
+    SkBitmapKey fBitmapKey;
     SkShader::TileMode fImageTileModes[2];
 
     State(SkShader* shader, const SkMatrix& canvasTransform,
@@ -453,7 +452,9 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 
 SkPDFFunctionShader::SkPDFFunctionShader(SkPDFShader::State* state)
-    : SkPDFDict("Pattern"), fShaderState(state) {}
+    : SkPDFDict("Pattern"), fShaderState(state) {
+    state->fImage.reset();
+}
 
 SkPDFFunctionShader::~SkPDFFunctionShader() {}
 
@@ -464,7 +465,9 @@ bool SkPDFFunctionShader::equals(const SkPDFShader::State& state) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 SkPDFAlphaFunctionShader::SkPDFAlphaFunctionShader(SkPDFShader::State* state)
-    : fShaderState(state) {}
+    : fShaderState(state) {
+    state->fImage.reset();
+}
 
 bool SkPDFAlphaFunctionShader::equals(const SkPDFShader::State& state) const {
     return state == *fShaderState;
@@ -475,7 +478,9 @@ SkPDFAlphaFunctionShader::~SkPDFAlphaFunctionShader() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 SkPDFImageShader::SkPDFImageShader(SkPDFShader::State* state)
-    : fShaderState(state) {}
+    : fShaderState(state) {
+    state->fImage.reset();
+}
 
 bool SkPDFImageShader::equals(const SkPDFShader::State& state) const {
     return state == *fShaderState;
@@ -1047,8 +1052,8 @@ bool SkPDFShader::State::operator==(const SkPDFShader::State& b) const {
     }
 
     if (fType == SkShader::kNone_GradientType) {
-        if (fPixelGeneration != b.fPixelGeneration ||
-                fPixelGeneration == 0 ||
+        if (fBitmapKey != b.fBitmapKey ||
+                fBitmapKey.id() == 0 ||
                 fImageTileModes[0] != b.fImageTileModes[0] ||
                 fImageTileModes[1] != b.fImageTileModes[1]) {
             return false;
@@ -1094,8 +1099,7 @@ bool SkPDFShader::State::operator==(const SkPDFShader::State& b) const {
 SkPDFShader::State::State(SkShader* shader, const SkMatrix& canvasTransform,
                           const SkIRect& bbox, SkScalar rasterScale)
         : fCanvasTransform(canvasTransform),
-          fBBox(bbox),
-          fPixelGeneration(0) {
+          fBBox(bbox) {
     fInfo.fColorCount = 0;
     fInfo.fColors = nullptr;
     fInfo.fColorOffsets = nullptr;
@@ -1149,7 +1153,7 @@ SkPDFShader::State::State(SkShader* shader, const SkMatrix& canvasTransform,
             fShaderTransform.setTranslate(shaderRect.x(), shaderRect.y());
             fShaderTransform.preScale(1 / scale.width(), 1 / scale.height());
         }
-        fPixelGeneration = fImage.getGenerationID();
+        fBitmapKey = SkBitmapKey(fImage);
     } else {
         AllocateGradientInfoStorage();
         shader->asAGradient(&fInfo);

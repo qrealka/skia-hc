@@ -156,7 +156,7 @@ bool make_ringed_alpha_image(GrContext* ctx, TestPixels* result, int width, int 
 
 /** Similar to make_ringed_bitmap with these modifications:
         - The backing store is a texture.
-        - The texture is larger than the bitmap dimensions (it is surrounded by non-content 
+        - The texture is larger than the bitmap dimensions (it is surrounded by non-content
           padding on the right/bottom of the contents.)
         - The right/bottom sides of the rings are omitted so that the rect to draw is adjacent to
           the texture padding.
@@ -410,9 +410,8 @@ protected:
 
         SkPaint paint;
         paint.setFilterQuality(filter);
-        SkMaskFilter* mf = SkBlurMaskFilter::Create(kNormal_SkBlurStyle,
-                                         SkBlurMask::ConvertRadiusToSigma(3));
-        paint.setMaskFilter(mf)->unref();
+        paint.setMaskFilter(SkBlurMaskFilter::Make(kNormal_SkBlurStyle,
+                                                   SkBlurMask::ConvertRadiusToSigma(3)));
         paint.setShader(fShader);
         paint.setColor(SK_ColorBLUE);
         paint.setAntiAlias(aa);
@@ -429,9 +428,8 @@ protected:
 
         SkPaint paint;
         paint.setFilterQuality(filter);
-        SkMaskFilter* mf = SkBlurMaskFilter::Create(kOuter_SkBlurStyle,
-                                                    SkBlurMask::ConvertRadiusToSigma(7));
-        paint.setMaskFilter(mf)->unref();
+        paint.setMaskFilter(SkBlurMaskFilter::Make(kOuter_SkBlurStyle,
+                                                   SkBlurMask::ConvertRadiusToSigma(7)));
         paint.setShader(fShader);
         paint.setColor(SK_ColorBLUE);
         paint.setAntiAlias(aa);

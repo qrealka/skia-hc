@@ -72,7 +72,7 @@ public:
      */
     class DeviceManager : public SkRefCnt {
     public:
-        
+
 
         virtual void setUpBackend(SampleWindow* win, int msaaSampleCount) = 0;
 
@@ -124,6 +124,7 @@ public:
     void toggleFPS();
     void showOverview();
     void toggleDistanceFieldFonts();
+    void setPixelGeometry(int pixelGeometryIndex);
 
     GrContext* getGrContext() const { return fDevManager->getGrContext(); }
 
@@ -206,6 +207,7 @@ private:
     SkOSMenu::TriState fAAState;
     SkOSMenu::TriState fSubpixelState;
     int fHintingState;
+    int fPixelGeometryIndex;
     int fFilterQualityIndex;
     unsigned   fFlipAxis;
 

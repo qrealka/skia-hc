@@ -45,6 +45,8 @@ DEFINE_bool(multiPage, false, "For document-type backends, render the source"
             " into multiple pages");
 DEFINE_bool(RAW_threading, true, "Allow RAW decodes to run on multiple threads?");
 
+using sk_gpu_test::GrContextFactory;
+
 namespace DM {
 
 GMSrc::GMSrc(skiagm::GMRegistry::Factory factory) : fFactory(factory) {}
@@ -939,8 +941,8 @@ Error NullSink::draw(const Src& src, SkBitmap*, SkWStream*, SkString*) const {
 
 DEFINE_bool(gpuStats, false, "Append GPU stats to the log for each GPU task?");
 
-GPUSink::GPUSink(GrContextFactory::GLContextType ct,
-                 GrContextFactory::GLContextOptions options,
+GPUSink::GPUSink(GrContextFactory::ContextType ct,
+                 GrContextFactory::ContextOptions options,
                  int samples,
                  bool diText,
                  SkColorType colorType,
@@ -1009,6 +1011,8 @@ Error GPUSink::draw(const Src& src, SkBitmap* dst, SkWStream*, SkString* log) co
     canvas->readPixels(dst, 0, 0);
     if (FLAGS_abandonGpuContext) {
         factory.abandonContexts();
+    } else if (FLAGS_releaseAndAbandonGpuContext) {
+        factory.releaseResourcesAndAbandonContexts();
     }
     return "";
 }
@@ -1070,8 +1074,6 @@ static Error draw_skdocument(const Src& src, SkDocument* doc, SkWStream* dst) {
     return "";
 }
 
-PDFSink::PDFSink(const char* rasterizer) : fRasterizer(rasterizer) {}
-
 Error PDFSink::draw(const Src& src, SkBitmap*, SkWStream* dst, SkString*) const {
     SkAutoTUnref<SkDocument> doc(SkDocument::CreatePDF(dst));
     if (!doc) {
@@ -1082,9 +1084,6 @@ Error PDFSink::draw(const Src& src, SkBitmap*, SkWStream* dst, SkString*) const 
     info.emplace_back(SkString("Subject"),
                       SkString("rendering correctness test"));
     info.emplace_back(SkString("Creator"), SkString("Skia/DM"));
-
-    info.emplace_back(SkString("Keywords"),
-                      SkStringPrintf("Rasterizer:%s;", fRasterizer));
     doc->setMetadata(&info[0], info.count(), nullptr, nullptr);
     return draw_skdocument(src, doc.get(), dst);
 }
@@ -1162,8 +1161,8 @@ static Error draw_to_canvas(Sink* sink, SkBitmap* bitmap, SkWStream* stream, SkS
     public:
         ProxySrc(SkISize size, const Fn& draw) : fSize(size), fDraw(draw) {}
         Error   draw(SkCanvas* canvas) const override { return fDraw(canvas); }
-        Name                    name() const override { sk_throw(); return ""; } // Won't be called.
-        SkISize                 size() const override { return fSize; }
+        Name    name() const override { return "ProxySrc"; }
+        SkISize size() const override { return fSize; }
     private:
         SkISize   fSize;
         const Fn& fDraw;
@@ -1182,7 +1181,8 @@ static Error check_against_reference(const SkBitmap* bitmap, const Src& src, Sin
     if (FLAGS_check && bitmap) {
         SkBitmap reference;
         SkString log;
-        Error err = sink->draw(src, &reference, nullptr, &log);
+        SkDynamicMemoryWStream wStream;
+        Error err = sink->draw(src, &reference, &wStream, &log);
         // If we can draw into this Sink via some pipeline, we should be able to draw directly.
         SkASSERT(err.isEmpty());
         if (!err.isEmpty()) {
@@ -1450,6 +1450,7 @@ Error ViaTwice::draw(const Src& src, SkBitmap* bitmap, SkWStream* stream, SkStri
 struct DrawsAsSingletonPictures {
     SkCanvas* fCanvas;
     const SkDrawableList& fDrawables;
+    SkRect fBounds;
 
     template <typename T>
     void draw(const T& op, SkCanvas* canvas) {
@@ -1464,7 +1465,7 @@ struct DrawsAsSingletonPictures {
     template <typename T>
     SK_WHEN(T::kTags & SkRecords::kDraw_Tag, void) operator()(const T& op) {
         SkPictureRecorder rec;
-        this->draw(op, rec.beginRecording(SkRect::MakeLargest()));
+        this->draw(op, rec.beginRecording(fBounds));
         sk_sp<SkPicture> pic(rec.finishRecordingAsPicture());
         fCanvas->drawPicture(pic);
     }
@@ -1501,6 +1502,7 @@ Error ViaSingletonPictures::draw(
         DrawsAsSingletonPictures drawsAsSingletonPictures = {
             macroCanvas,
             drawables ? *drawables : empty,
+            SkRect::MakeWH((SkScalar)size.width(), (SkScalar)size.height()),
         };
         for (int i = 0; i < skr.count(); i++) {
             skr.visit(i, drawsAsSingletonPictures);

@@ -9,13 +9,13 @@
 
 #include "SkCanvas.h"
 #include "SkColorFilter.h"
+#include "SkDevice.h"
 #include "SkReadBuffer.h"
-#include "SkSpecialImage.h"
-#include "SkSpecialSurface.h"
 #include "SkWriteBuffer.h"
 
-SkImageFilter* SkColorFilterImageFilter::Create(SkColorFilter* cf, SkImageFilter* input,
-                                                const CropRect* cropRect) {
+sk_sp<SkImageFilter> SkColorFilterImageFilter::Make(sk_sp<SkColorFilter> cf,
+                                                    sk_sp<SkImageFilter> input,
+                                                    const CropRect* cropRect) {
     if (!cf) {
         return nullptr;
     }
@@ -24,27 +24,31 @@ SkImageFilter* SkColorFilterImageFilter::Create(SkColorFilter* cf, SkImageFilter
     if (input && input->isColorFilterNode(&inputCF)) {
         // This is an optimization, as it collapses the hierarchy by just combining the two
         // colorfilters into a single one, which the new imagefilter will wrap.
-        sk_sp<SkColorFilter> newCF(SkColorFilter::MakeComposeFilter(sk_ref_sp(cf),
+        sk_sp<SkColorFilter> newCF(SkColorFilter::MakeComposeFilter(cf,// can't move bc of fallthru
                                                                     sk_sp<SkColorFilter>(inputCF)));
         if (newCF) {
-            return new SkColorFilterImageFilter(newCF.get(), input->getInput(0), cropRect);
+            return sk_sp<SkImageFilter>(new SkColorFilterImageFilter(std::move(newCF),
+                                                                     sk_ref_sp(input->getInput(0)),
+                                                                     cropRect));
         }
     }
 
-    return new SkColorFilterImageFilter(cf, input, cropRect);
+    return sk_sp<SkImageFilter>(new SkColorFilterImageFilter(std::move(cf),
+                                                             std::move(input),
+                                                             cropRect));
 }
 
-SkColorFilterImageFilter::SkColorFilterImageFilter(SkColorFilter* cf,
-                                                   SkImageFilter* input, 
+SkColorFilterImageFilter::SkColorFilterImageFilter(sk_sp<SkColorFilter> cf,
+                                                   sk_sp<SkImageFilter> input,
                                                    const CropRect* cropRect)
-    : INHERITED(1, &input, cropRect)
-    , fColorFilter(SkRef(cf)) {
+    : INHERITED(&input, 1, cropRect)
+    , fColorFilter(std::move(cf)) {
 }
 
-SkFlattenable* SkColorFilterImageFilter::CreateProc(SkReadBuffer& buffer) {
+sk_sp<SkFlattenable> SkColorFilterImageFilter::CreateProc(SkReadBuffer& buffer) {
     SK_IMAGEFILTER_UNFLATTEN_COMMON(common, 1);
     sk_sp<SkColorFilter> cf(buffer.readColorFilter());
-    return Create(cf.get(), common.getInput(0), &common.cropRect());
+    return Make(std::move(cf), common.getInput(0), &common.cropRect());
 }
 
 void SkColorFilterImageFilter::flatten(SkWriteBuffer& buffer) const {
@@ -52,47 +56,55 @@ void SkColorFilterImageFilter::flatten(SkWriteBuffer& buffer) const {
     buffer.writeFlattenable(fColorFilter.get());
 }
 
-sk_sp<SkSpecialImage> SkColorFilterImageFilter::onFilterImage(SkSpecialImage* source,
-                                                              const Context& ctx,
-                                                              SkIPoint* offset) const {
-    SkIPoint inputOffset = SkIPoint::Make(0, 0);
-    sk_sp<SkSpecialImage> input(this->filterInput(0, source, ctx, &inputOffset));
-    if (!input) {
-        return nullptr;
+bool SkColorFilterImageFilter::onFilterImageDeprecated(Proxy* proxy, const SkBitmap& source,
+                                                       const Context& ctx,
+                                                       SkBitmap* result,
+                                                       SkIPoint* offset) const {
+    SkBitmap src = source;
+    SkIPoint srcOffset = SkIPoint::Make(0, 0);
+    bool inputResult = this->filterInputDeprecated(0, proxy, source, ctx, &src, &srcOffset);
+
+    SkIRect srcBounds;
+
+    if (fColorFilter->affectsTransparentBlack()) {
+        // If the color filter affects transparent black, the bounds are the entire clip.
+        srcBounds = ctx.clipBounds();
+    } else if (!inputResult) {
+        return false;
+    } else {
+        srcBounds = src.bounds();
+        srcBounds.offset(srcOffset);
     }
 
     SkIRect bounds;
-    const SkIRect inputBounds = SkIRect::MakeXYWH(inputOffset.fX, inputOffset.fY,
-                                                  input->width(), input->height());
-    if (!this->applyCropRect(ctx, inputBounds, &bounds)) {
-        return nullptr;
+    if (!this->applyCropRect(ctx, srcBounds, &bounds)) {
+        return false;
     }
 
-    SkImageInfo info = SkImageInfo::MakeN32(bounds.width(), bounds.height(), kPremul_SkAlphaType);
-    sk_sp<SkSpecialSurface> surf(source->makeSurface(info));
-    if (!surf) {
-        return nullptr;
+    SkAutoTUnref<SkBaseDevice> device(proxy->createDevice(bounds.width(), bounds.height()));
+    if (nullptr == device.get()) {
+        return false;
     }
-
-    SkCanvas* canvas = surf->getCanvas();
-    SkASSERT(canvas);
-
-    // TODO: it seems like this clear shouldn't be necessary (see skbug.com/5075)
-    canvas->clear(0x0);
+    SkCanvas canvas(device.get());
 
     SkPaint paint;
-
     paint.setXfermodeMode(SkXfermode::kSrc_Mode);
     paint.setColorFilter(fColorFilter);
 
-    input->draw(canvas,
-                SkIntToScalar(inputOffset.fX - bounds.fLeft),
-                SkIntToScalar(inputOffset.fY - bounds.fTop),
-                &paint);
+    // TODO: it may not be necessary to clear or drawPaint inside the input bounds
+    // (see skbug.com/5075)
+    if (fColorFilter->affectsTransparentBlack()) {
+        // The subsequent drawBitmap call may not fill the entire canvas. For filters which
+        // affect transparent black, ensure that the filter is applied everywhere.
+        canvas.drawPaint(paint);
+    }
 
+    canvas.drawBitmap(src, SkIntToScalar(srcOffset.fX - bounds.fLeft),
+                           SkIntToScalar(srcOffset.fY - bounds.fTop), &paint);
+    *result = device.get()->accessBitmap(false);
     offset->fX = bounds.fLeft;
     offset->fY = bounds.fTop;
-    return surf->makeImageSnapshot();
+    return true;
 }
 
 bool SkColorFilterImageFilter::onIsColorFilterNode(SkColorFilter** filter) const {
@@ -106,11 +118,8 @@ bool SkColorFilterImageFilter::onIsColorFilterNode(SkColorFilter** filter) const
     return false;
 }
 
-bool SkColorFilterImageFilter::canComputeFastBounds() const {
-    if (fColorFilter->affectsTransparentBlack()) {
-        return false;
-    }
-    return INHERITED::canComputeFastBounds();
+bool SkColorFilterImageFilter::affectsTransparentBlack() const {
+    return fColorFilter->affectsTransparentBlack();
 }
 
 #ifndef SK_IGNORE_TO_STRING

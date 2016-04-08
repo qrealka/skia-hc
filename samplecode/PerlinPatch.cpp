@@ -129,7 +129,7 @@ protected:
         }
 
         SkPaint paint;
-        
+
         SkScalar texWidth = fTexScale * TexWidth;
         SkScalar texHeight = fTexScale * TexHeight;
         const SkPoint texCoords[SkPatchUtils::kNumCorners] = {
@@ -139,7 +139,7 @@ protected:
             { fTexX - texWidth, fTexY + texHeight}}
         ;
         
-        SkAutoTUnref<SkXfermode> xfer(SkXfermode::Create(SkXfermode::kSrc_Mode));
+        sk_sp<SkXfermode> xfer(SkXfermode::Make(SkXfermode::kSrc_Mode));
 
         SkScalar scaleFreq = 2.0;
         fShader1 = SkPerlinNoiseShader2::MakeImprovedNoise(fXFreq/scaleFreq, fYFreq/scaleFreq, 4,
@@ -204,4 +204,3 @@ private:
 };
 
 DEF_SAMPLE( return new PerlinPatchView(); )
-

@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2011 Google Inc.
  *
@@ -54,17 +53,6 @@ static void test_cubic2() {
     SkParsePath::FromSVGString(str, &path);
 
     {
-#ifdef SK_BUILD_FOR_WIN
-        // windows doesn't have strtof
-        float x = (float)strtod("9.94099e+07", nullptr);
-#else
-        float x = strtof("9.94099e+07", nullptr);
-#endif
-        int ix = (int)x;
-        int fx = (int)(x * 65536);
-        int ffx = SkScalarToFixed(x);
-        SkDebugf("%g %x %x %x\n", x, ix, fx, ffx);
-
         SkRect r = path.getBounds();
         SkIRect ir;
         r.round(&ir);
@@ -345,4 +333,3 @@ private:
     typedef SampleView INHERITED;
 };
 DEF_SAMPLE( return new ArcToView; )
-

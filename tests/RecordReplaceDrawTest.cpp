@@ -137,13 +137,13 @@ void test_replacements(skiatest::Reporter* r, GrContext* context, bool doReplace
     if (doReplace) {
         REPORTER_ASSERT(r, 0 == numLayers);
     } else {
-        REPORTER_ASSERT(r, 1 == numLayers);    
+        REPORTER_ASSERT(r, 1 == numLayers);
     }
 }
 
-DEF_GPUTEST_FOR_RENDERING_CONTEXTS(RecordReplaceDraw, r, context) {
-    test_replacements(r, context, false);
-    test_replacements(r, context, true);
+DEF_GPUTEST_FOR_GL_RENDERING_CONTEXTS(RecordReplaceDraw, r, ctxInfo) {
+    test_replacements(r, ctxInfo.fGrContext, true);
+    test_replacements(r, ctxInfo.fGrContext, false);
 }
 
 #endif

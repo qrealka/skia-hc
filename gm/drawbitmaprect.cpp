@@ -35,7 +35,7 @@ static SkBitmap make_chessbm(int w, int h) {
 
 static sk_sp<SkImage> makebm(SkCanvas* origCanvas, SkBitmap* resultBM, int w, int h) {
     SkImageInfo info = SkImageInfo::MakeN32Premul(w, h);
-    
+
     auto surface(origCanvas->makeSurface(info));
     if (nullptr == surface) {
         // picture canvas will return null, so fall-back to raster
@@ -88,7 +88,7 @@ static sk_sp<SkImage> makebm(SkCanvas* origCanvas, SkBitmap* resultBM, int w, in
 #if SK_SUPPORT_GPU
     if (GrTexture* texture = as_IB(image)->peekTexture()) {
         GrWrapTextureInBitmap(texture, image->width(), image->height(), image->isOpaque(), &tempBM);
-    } else 
+    } else
 #endif
     {
         image->asLegacyBitmap(&tempBM, SkImage::kRO_LegacyBitmapMode);
@@ -211,12 +211,11 @@ protected:
             paint.setFilterQuality(kLow_SkFilterQuality);
 
             srcRect.setXYWH(1, 1, 3, 3);
-            SkMaskFilter* mf = SkBlurMaskFilter::Create(
+            paint.setMaskFilter(SkBlurMaskFilter::Make(
                 kNormal_SkBlurStyle,
                 SkBlurMask::ConvertRadiusToSigma(SkIntToScalar(5)),
                 SkBlurMaskFilter::kHighQuality_BlurFlag |
-                SkBlurMaskFilter::kIgnoreTransform_BlurFlag);
-            paint.setMaskFilter(mf)->unref();
+                SkBlurMaskFilter::kIgnoreTransform_BlurFlag));
             canvas->drawBitmapRect(bm, srcRect, dstRect, &paint);
         }
     }

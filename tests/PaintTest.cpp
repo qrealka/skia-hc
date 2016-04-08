@@ -147,9 +147,8 @@ DEF_TEST(Paint_copy, reporter) {
     // set a few pointers
     SkLayerDrawLooper::Builder looperBuilder;
     paint.setLooper(looperBuilder.detach());
-    SkMaskFilter* mask = SkBlurMaskFilter::Create(kNormal_SkBlurStyle,
-                                      SkBlurMask::ConvertRadiusToSigma(SkIntToScalar(1)));
-    paint.setMaskFilter(mask)->unref();
+    paint.setMaskFilter(SkBlurMaskFilter::Make(kNormal_SkBlurStyle,
+                                               SkBlurMask::ConvertRadiusToSigma(1)));
 
     // copy the paint using the copy constructor and check they are the same
     SkPaint copiedPaint = paint;
@@ -292,7 +291,7 @@ DEF_TEST(Paint_MoreFlattening, r) {
     paint.setColor(0x00AABBCC);
     paint.setTextScaleX(1.0f);  // Default value, ignored.
     paint.setTextSize(19);
-    paint.setXfermode(SkXfermode::Create(SkXfermode::kModulate_Mode))->unref();
+    paint.setXfermode(SkXfermode::Make(SkXfermode::kModulate_Mode));
     paint.setLooper(nullptr);  // Default value, ignored.
 
     SkWriteBuffer writer;
@@ -367,4 +366,3 @@ DEF_TEST(Paint_nothingToDraw, r) {
     paint.setColorFilter(SkColorFilter::MakeMatrixFilterRowMajor255(cm.fMat));
     REPORTER_ASSERT(r, !paint.nothingToDraw());
 }
-

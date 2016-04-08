@@ -8,9 +8,9 @@
 #include "Test.h"
 #if SK_SUPPORT_GPU
 #include "gl/GrGLGpu.h"
+#include "gl/GLTestContext.h"
 #include "GrContext.h"
 #include "SkSurface_Gpu.h"
-#include "../include/gpu/gl/SkGLContext.h"
 #include "../include/gpu/GrTypes.h"
 #include "../include/private/SkTemplates.h"
 
@@ -53,7 +53,9 @@ class TestStorageAllocator {
   bool m_allowAllocation;
 };
 
-DEF_GPUTEST_FOR_RENDERING_CONTEXTS(CustomTexture, reporter, context, glContext) {
+DEF_GPUTEST_FOR_GL_RENDERING_CONTEXTS(CustomTexture, reporter, ctxInfo) {
+    GrContext* context = ctxInfo.fGrContext;
+    sk_gpu_test::GLTestContext* glContext = ctxInfo.fGLContext;
     static const int kWidth = 13;
     static const int kHeight = 13;
 
@@ -88,11 +90,11 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(CustomTexture, reporter, context, glContext) 
     REPORTER_ASSERT(reporter, GrColorUnpackG(dest) == 255);
 }
 
-DEF_GPUTEST_FOR_RENDERING_CONTEXTS(CustomTextureFailure, reporter, context, glContext) {
+DEF_GPUTEST_FOR_GL_RENDERING_CONTEXTS(CustomTextureFailure, reporter, ctxInfo) {
     static const int kWidth = 13;
     static const int kHeight = 13;
 
-    const GrGLInterface* gl = glContext->gl();
+    const GrGLInterface* gl = ctxInfo.fGLContext->gl();
     TestStorageAllocator allocator;
     allocator.m_allowAllocation = false;
     allocator.m_gl = gl;
@@ -101,7 +103,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(CustomTextureFailure, reporter, context, glCo
     grAllocator.fDeallocateTextureStorage= &TestStorageAllocator::deallocateTextureStorage;
     grAllocator.fCtx = &allocator;
     auto surface(SkSurface_Gpu::MakeRenderTarget(
-            context, SkBudgeted::kNo, SkImageInfo::MakeN32Premul(kWidth, kHeight), 0,
+            ctxInfo.fGrContext, SkBudgeted::kNo, SkImageInfo::MakeN32Premul(kWidth, kHeight), 0,
             NULL, grAllocator));
     REPORTER_ASSERT(reporter, !surface);
 }

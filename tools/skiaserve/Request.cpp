@@ -10,6 +10,8 @@
 #include "SkPictureRecorder.h"
 #include "SkPixelSerializer.h"
 
+using namespace sk_gpu_test;
+
 static int kDefaultWidth = 1920;
 static int kDefaultHeight = 1080;
 
@@ -55,7 +57,7 @@ SkData* Request::writeCanvasToPng(SkCanvas* canvas) {
 
     // write to png
     SkDynamicMemoryWStream buffer;
-    SkDrawCommand::WritePNG((const png_bytep) bmp->getPixels(), bmp->width(), bmp->height(), 
+    SkDrawCommand::WritePNG((const png_bytep) bmp->getPixels(), bmp->width(), bmp->height(),
                             buffer);
     return buffer.copyToData();
 }
@@ -63,8 +65,8 @@ SkData* Request::writeCanvasToPng(SkCanvas* canvas) {
 SkCanvas* Request::getCanvas() {
 #if SK_SUPPORT_GPU
     GrContextFactory* factory = fContextFactory;
-    SkGLContext* gl = factory->getContextInfo(GrContextFactory::kNative_GLContextType,
-                                              GrContextFactory::kNone_GLContextOptions).fGLContext;
+    GLTestContext* gl = factory->getContextInfo(GrContextFactory::kNativeGL_ContextType,
+                                            GrContextFactory::kNone_ContextOptions).fGLContext;
     gl->makeCurrent();
 #endif
     SkASSERT(fDebugCanvas);
@@ -107,8 +109,8 @@ SkData* Request::writeOutSkp() {
 
 GrContext* Request::getContext() {
 #if SK_SUPPORT_GPU
-  return fContextFactory->get(GrContextFactory::kNative_GLContextType,
-                              GrContextFactory::kNone_GLContextOptions);
+  return fContextFactory->get(GrContextFactory::kNativeGL_ContextType,
+                              GrContextFactory::kNone_ContextOptions);
 #else
   return nullptr;
 #endif
@@ -155,7 +157,7 @@ SkSurface* Request::createGPUSurface() {
     return surface;
 }
 
-bool Request::enableGPU(bool enable) {    
+bool Request::enableGPU(bool enable) {
     if (enable) {
         SkSurface* surface = this->createGPUSurface();
         if (surface) {
@@ -175,7 +177,7 @@ bool Request::enableGPU(bool enable) {
     fSurface.reset(this->createCPUSurface());
     fGPUEnabled = false;
     return true;
-} 
+}
 
 bool Request::initPictureFromStream(SkStream* stream) {
     // parse picture from stream
@@ -254,4 +256,3 @@ SkColor Request::getPixel(int x, int y) {
     bitmap->unlockPixels();
     return result;
 }
-

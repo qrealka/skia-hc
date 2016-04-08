@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2014 Google Inc.
  *
@@ -51,10 +50,10 @@ private:
     const SkMatrix fDeviceMatrix;
 };
 
-SkFlattenable* DCShader::CreateProc(SkReadBuffer& buf) {
+sk_sp<SkFlattenable> DCShader::CreateProc(SkReadBuffer& buf) {
     SkMatrix matrix;
     buf.readMatrix(&matrix);
-    return new DCShader(matrix);
+    return sk_make_sp<DCShader>(matrix);
 }
 
 class DCFP : public GrFragmentProcessor {

@@ -56,6 +56,9 @@
     #include "gl/GrGLDefines.h"
     #include "GrCaps.h"
     #include "GrContextFactory.h"
+    #include "gl/GrGLUtil.h"
+    using sk_gpu_test::GrContextFactory;
+    using sk_gpu_test::GLTestContext;
     SkAutoTDelete<GrContextFactory> gGrFactory;
 #endif
 
@@ -155,21 +158,21 @@ bool Target::capturePixels(SkBitmap* bmp) {
 #if SK_SUPPORT_GPU
 struct GPUTarget : public Target {
     explicit GPUTarget(const Config& c) : Target(c), gl(nullptr) { }
-    SkGLContext* gl;
+    GLTestContext* gl;
 
     void setup() override {
         this->gl->makeCurrent();
         // Make sure we're done with whatever came before.
-        SK_GL(*this->gl, Finish());
+        GR_GL_CALL(this->gl->gl(), Finish());
     }
     void endTiming() override {
         if (this->gl) {
-            SK_GL(*this->gl, Flush());
+            GR_GL_CALL(this->gl->gl(), Flush());
             this->gl->waitOnSyncOrSwap();
         }
     }
     void fence() override {
-        SK_GL(*this->gl, Finish());
+        GR_GL_CALL(this->gl->gl(), Finish());
     }
 
     bool needsFrameTiming(int* maxFrameLag) const override {
@@ -200,16 +203,16 @@ struct GPUTarget : public Target {
     }
     void fillOptions(ResultsWriter* log) override {
         const GrGLubyte* version;
-        SK_GL_RET(*this->gl, version, GetString(GR_GL_VERSION));
+        GR_GL_CALL_RET(this->gl->gl(), version, GetString(GR_GL_VERSION));
         log->configOption("GL_VERSION", (const char*)(version));
 
-        SK_GL_RET(*this->gl, version, GetString(GR_GL_RENDERER));
+        GR_GL_CALL_RET(this->gl->gl(), version, GetString(GR_GL_RENDERER));
         log->configOption("GL_RENDERER", (const char*) version);
 
-        SK_GL_RET(*this->gl, version, GetString(GR_GL_VENDOR));
+        GR_GL_CALL_RET(this->gl->gl(), version, GetString(GR_GL_VENDOR));
         log->configOption("GL_VENDOR", (const char*) version);
 
-        SK_GL_RET(*this->gl, version, GetString(GR_GL_SHADING_LANGUAGE_VERSION));
+        GR_GL_CALL_RET(this->gl->gl(), version, GetString(GR_GL_SHADING_LANGUAGE_VERSION));
         log->configOption("GL_SHADING_LANGUAGE_VERSION", (const char*) version);
     }
 };
@@ -382,11 +385,11 @@ static int setup_gpu_bench(Target* target, Benchmark* bench, int maxGpuFrameLag)
 }
 
 #if SK_SUPPORT_GPU
-#define kBogusGLContextType GrContextFactory::kNative_GLContextType
-#define kBogusGLContextOptions GrContextFactory::kNone_GLContextOptions
+#define kBogusContextType GrContextFactory::kNativeGL_ContextType
+#define kBogusContextOptions GrContextFactory::kNone_ContextOptions
 #else
-#define kBogusGLContextType 0
-#define kBogusGLContextOptions 0
+#define kBogusContextType 0
+#define kBogusContextOptions 0
 #endif
 
 static void create_config(const SkCommandLineConfig* config, SkTArray<Config>* configs) {
@@ -396,8 +399,8 @@ static void create_config(const SkCommandLineConfig* config, SkTArray<Config>* c
         if (!FLAGS_gpu)
             return;
 
-        const auto ctxOptions = gpuConfig->getUseNVPR() ? GrContextFactory::kEnableNVPR_GLContextOptions
-                                                        : GrContextFactory::kNone_GLContextOptions;
+        const auto ctxOptions = gpuConfig->getUseNVPR() ? GrContextFactory::kEnableNVPR_ContextOptions
+                                                        : GrContextFactory::kNone_ContextOptions;
         const auto ctxType = gpuConfig->getContextType();
         const auto sampleCount = gpuConfig->getSamples();
 
@@ -434,7 +437,7 @@ static void create_config(const SkCommandLineConfig* config, SkTArray<Config>* c
         if (config->getTag().equals(#name)) {                                \
             Config config = {                                                \
                 SkString(#name), Benchmark::backend, color, alpha, profile,  \
-                0, kBogusGLContextType, kBogusGLContextOptions, false        \
+                0, kBogusContextType, kBogusContextOptions, false            \
             };                                                               \
             configs->push_back(config);                                      \
             return;                                                          \
@@ -460,7 +463,7 @@ static void create_config(const SkCommandLineConfig* config, SkTArray<Config>* c
     if (config->getTag().equals("hwui")) {
         Config config = { SkString("hwui"), Benchmark::kHWUI_Backend,
                           kRGBA_8888_SkColorType, kPremul_SkAlphaType, kLinear_SkColorProfileType,
-                          0, kBogusGLContextType, kBogusGLContextOptions, false };
+                          0, kBogusContextType, kBogusContextOptions, false };
         configs->push_back(config);
     }
 #endif

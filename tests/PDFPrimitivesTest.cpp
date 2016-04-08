@@ -21,6 +21,7 @@
 #include "SkPDFUtils.h"
 #include "SkReadBuffer.h"
 #include "SkScalar.h"
+#include "SkSpecialImage.h"
 #include "SkStream.h"
 #include "SkTypes.h"
 #include "Test.h"
@@ -364,27 +365,34 @@ namespace {
 
 class DummyImageFilter : public SkImageFilter {
 public:
-    DummyImageFilter(bool visited = false) : SkImageFilter(0, nullptr), fVisited(visited) {}
-    ~DummyImageFilter() override {}
-    bool onFilterImageDeprecated(Proxy*, const SkBitmap& src, const Context&,
-                                 SkBitmap* result, SkIPoint* offset) const override {
-        fVisited = true;
-        offset->fX = offset->fY = 0;
-        *result = src;
-        return true;
+    static sk_sp<DummyImageFilter> Make(bool visited = false) {
+        return sk_sp<DummyImageFilter>(new DummyImageFilter(visited));
     }
+
     SK_TO_STRING_OVERRIDE()
     SK_DECLARE_PUBLIC_FLATTENABLE_DESERIALIZATION_PROCS(DummyImageFilter)
     bool visited() const { return fVisited; }
 
+protected:
+    sk_sp<SkSpecialImage> onFilterImage(SkSpecialImage* source, const Context&,
+                                        SkIPoint* offset) const override {
+        fVisited = true;
+        offset->fX = offset->fY = 0;
+        return sk_ref_sp<SkSpecialImage>(source);
+    }
+
 private:
+    DummyImageFilter(bool visited) : INHERITED(nullptr, 0, nullptr), fVisited(visited) {}
+
     mutable bool fVisited;
+
+    typedef SkImageFilter INHERITED;
 };
 
-SkFlattenable* DummyImageFilter::CreateProc(SkReadBuffer& buffer) {
+sk_sp<SkFlattenable> DummyImageFilter::CreateProc(SkReadBuffer& buffer) {
     SK_IMAGEFILTER_UNFLATTEN_COMMON(common, 0);
     bool visited = buffer.readBool();
-    return new DummyImageFilter(visited);
+    return DummyImageFilter::Make(visited);
 }
 
 #ifndef SK_IGNORE_TO_STRING
@@ -403,7 +411,7 @@ DEF_TEST(PDFImageFilter, reporter) {
     sk_sp<SkDocument> doc(SkDocument::CreatePDF(&stream));
     SkCanvas* canvas = doc->beginPage(100.0f, 100.0f);
 
-    sk_sp<DummyImageFilter> filter(new DummyImageFilter());
+    sk_sp<DummyImageFilter> filter(DummyImageFilter::Make());
 
     // Filter just created; should be unvisited.
     REPORTER_ASSERT(reporter, !filter->visited());

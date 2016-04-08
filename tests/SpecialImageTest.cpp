@@ -43,7 +43,7 @@ static SkBitmap create_bm() {
     p.setAntiAlias(false);
 
     temp.drawRect(SkRect::MakeXYWH(SkIntToScalar(kPad), SkIntToScalar(kPad),
-                                   SkIntToScalar(kSmallerSize), SkIntToScalar(kSmallerSize)), 
+                                   SkIntToScalar(kSmallerSize), SkIntToScalar(kSmallerSize)),
                   p);
 
     return bm;
@@ -203,7 +203,8 @@ static void test_texture_backed(skiatest::Reporter* reporter,
 }
 
 // Test out the SkSpecialImage::makeTextureImage entry point
-DEF_GPUTEST_FOR_RENDERING_CONTEXTS(SpecialImage_MakeTexture, reporter, context) {
+DEF_GPUTEST_FOR_GL_RENDERING_CONTEXTS(SpecialImage_MakeTexture, reporter, ctxInfo) {
+    GrContext* context = ctxInfo.fGrContext;
     SkBitmap bm = create_bm();
 
     const SkIRect& subset = SkIRect::MakeXYWH(kPad, kPad, kSmallerSize, kSmallerSize);
@@ -266,7 +267,8 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(SpecialImage_MakeTexture, reporter, context) 
     }
 }
 
-DEF_GPUTEST_FOR_RENDERING_CONTEXTS(SpecialImage_Gpu, reporter, context) {
+DEF_GPUTEST_FOR_GL_RENDERING_CONTEXTS(SpecialImage_Gpu, reporter, ctxInfo) {
+    GrContext* context = ctxInfo.fGrContext;
     SkBitmap bm = create_bm();
 
     GrSurfaceDesc desc;
@@ -292,7 +294,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(SpecialImage_Gpu, reporter, context) {
 
     {
         sk_sp<SkSpecialImage> subSImg1(SkSpecialImage::MakeFromGpu(
-                                                               nullptr, subset, 
+                                                               nullptr, subset,
                                                                kNeedNewImageUniqueID_SpecialImage,
                                                                texture));
         test_image(subSImg1, reporter, false, true, kPad, kFullSize);

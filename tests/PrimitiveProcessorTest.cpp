@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2016 Google Inc.
  *
@@ -89,12 +88,11 @@ private:
             SkTArray<SkString> fAttribNames;
         };
         SkAutoTUnref<GrGeometryProcessor> gp(new GP(fNumAttribs));
-        target->initDraw(gp);
         QuadHelper helper;
         size_t vertexStride = gp->getVertexStride();
         SkPoint* vertices = reinterpret_cast<SkPoint*>(helper.init(target, vertexStride, 1));
         vertices->setRectFan(0.f, 0.f, 1.f, 1.f, vertexStride);
-        helper.recordDraw(target);
+        helper.recordDraw(target, gp);
     }
 
     int fNumAttribs;
@@ -103,7 +101,8 @@ private:
 };
 }
 
-DEF_GPUTEST_FOR_ALL_CONTEXTS(VertexAttributeCount, reporter, context) {
+DEF_GPUTEST_FOR_ALL_GL_CONTEXTS(VertexAttributeCount, reporter, ctxInfo) {
+    GrContext* context = ctxInfo.fGrContext;
     GrTextureDesc desc;
     desc.fHeight = 1;
     desc.fWidth = 1;

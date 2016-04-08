@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2012 Google Inc.
  *
@@ -710,7 +709,7 @@ static void extract_verts(const GrAAConvexTessellator& tess,
             *reinterpret_cast<GrColor*>(verts + i * vertexStride) = scaledColor;
         } else {
             *reinterpret_cast<GrColor*>(verts + i * vertexStride) = color;
-            *reinterpret_cast<float*>(verts + i * vertexStride + sizeof(GrColor)) = 
+            *reinterpret_cast<float*>(verts + i * vertexStride + sizeof(GrColor)) =
                     tess.coverage(i);
         }
     }
@@ -755,7 +754,7 @@ public:
 
     const char* name() const override { return "AAConvexBatch"; }
 
-    void computePipelineOptimizations(GrInitInvariantOutput* color, 
+    void computePipelineOptimizations(GrInitInvariantOutput* color,
                                       GrInitInvariantOutput* coverage,
                                       GrBatchToXPOverrides* overrides) const override {
         // When this is called on a batch, there is only one geometry bundle
@@ -792,8 +791,6 @@ private:
             SkDebugf("Could not create GrGeometryProcessor\n");
             return;
         }
-
-        target->initDraw(gp);
 
         size_t vertexStride = gp->getVertexStride();
 
@@ -840,7 +837,7 @@ private:
                              vertexBuffer, indexBuffer,
                              firstVertex, firstIndex,
                              tess.numPts(), tess.numIndices());
-            target->draw(mesh);
+            target->draw(gp, mesh);
         }
     }
 
@@ -863,8 +860,6 @@ private:
         // Setup GrGeometryProcessor
         SkAutoTUnref<GrGeometryProcessor> quadProcessor(
                 QuadEdgeEffect::Create(this->color(), invert, this->usesLocalCoords()));
-
-        target->initDraw(quadProcessor);
 
         // TODO generate all segments for all paths and use one vertex buffer
         for (int i = 0; i < instanceCount; i++) {
@@ -930,7 +925,7 @@ private:
                 const Draw& draw = draws[j];
                 mesh.initIndexed(kTriangles_GrPrimitiveType, vertexBuffer, indexBuffer,
                                  firstVertex, firstIndex, draw.fVertexCnt, draw.fIndexCnt);
-                target->draw(mesh);
+                target->draw(quadProcessor, mesh);
                 firstVertex += draw.fVertexCnt;
                 firstIndex += draw.fIndexCnt;
             }

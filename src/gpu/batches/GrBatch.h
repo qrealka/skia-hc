@@ -8,11 +8,12 @@
 #ifndef GrBatch_DEFINED
 #define GrBatch_DEFINED
 
-#include <new>
+#include "../private/SkAtomics.h"
 #include "GrNonAtomicRef.h"
-
 #include "SkRect.h"
 #include "SkString.h"
+
+#include <new>
 
 class GrCaps;
 class GrBatchFlushState;
@@ -96,11 +97,11 @@ public:
     uint32_t classID() const { SkASSERT(kIllegalBatchID != fClassID); return fClassID; }
 
     // We lazily initialize the uniqueID because currently the only user is GrAuditTrail
-    uint32_t uniqueID() const { 
+    uint32_t uniqueID() const {
         if (kIllegalBatchID == fUniqueID) {
             fUniqueID = GenBatchID();
         }
-        return fUniqueID; 
+        return fUniqueID;
     }
     SkDEBUGCODE(bool isUsed() const { return fUsed; })
 

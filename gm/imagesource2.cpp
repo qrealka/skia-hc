@@ -47,7 +47,7 @@ protected:
         int curColor = 0;
 
         for (int x = 0; x < kImageSize; x += 3) {
-            SkRect r = SkRect::MakeXYWH(SkIntToScalar(x), SkIntToScalar(0), 
+            SkRect r = SkRect::MakeXYWH(SkIntToScalar(x), SkIntToScalar(0),
                                         SkIntToScalar(3), SkIntToScalar(kImageSize));
             SkPaint p;
             p.setColor(gColors[curColor]);
@@ -60,15 +60,13 @@ protected:
     }
 
     void onDraw(SkCanvas* canvas) override {
-        SkRect srcRect = SkRect::MakeLTRB(0, 0,
-                                          SkIntToScalar(kImageSize), SkIntToScalar(kImageSize));
-        SkRect dstRect = SkRect::MakeLTRB(0.75f, 0.75f, 225.75f, 225.75f);
-
-        SkAutoTUnref<SkImageFilter> filter(
-            SkImageSource::Create(fImage.get(), srcRect, dstRect, fFilter));
+        const SkRect srcRect = SkRect::MakeLTRB(0, 0,
+                                                SkIntToScalar(kImageSize),
+                                                SkIntToScalar(kImageSize));
+        const SkRect dstRect = SkRect::MakeLTRB(0.75f, 0.75f, 225.75f, 225.75f);
 
         SkPaint p;
-        p.setImageFilter(filter);
+        p.setImageFilter(SkImageSource::Make(fImage, srcRect, dstRect, fFilter));
 
         canvas->saveLayer(nullptr, &p);
         canvas->restore();

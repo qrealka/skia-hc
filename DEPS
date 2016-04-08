@@ -18,10 +18,10 @@ deps = {
   "third_party/externals/nanomsg" : "https://skia.googlesource.com/third_party/nanomsg.git@0.4-beta",
   "third_party/externals/zlib"    : "https://chromium.googlesource.com/chromium/src/third_party/zlib@c4e33043fb071b6ea0a153845da625d7ed633d3d",
   # NOTE: If we update libpng, we may need to update the generated file at third_party/libpng/pnglibconf.h
-  "third_party/externals/libpng"  : "https://skia.googlesource.com/third_party/libpng.git@52846504da1f519cf1bb89636caf9110e8677443",
+  "third_party/externals/libpng"  : "https://skia.googlesource.com/third_party/libpng.git@5765a2224946b953ec6702bd01205af475f8c80a",
   "third_party/externals/giflib"  : "https://android.googlesource.com/platform/external/giflib.git@ab10e256df4f684260ca239905b1cec727181f6c",
 
-  "third_party/externals/dng_sdk" : "https://android.googlesource.com/platform/external/dng_sdk.git@1754202ed3e25b98179a4f377f0bdd605d9a157a",
+  "third_party/externals/dng_sdk" : "https://android.googlesource.com/platform/external/dng_sdk.git@e95f96bb9d29978211250ee764ba78731ad316df",
   "third_party/externals/piex"    : "https://android.googlesource.com/platform/external/piex.git@883a1e5419990f51b8e928969e9c5a09869bce0e",
 
   "third_party/externals/libjpeg-turbo"             : "https://skia.googlesource.com/third_party/libjpeg-turbo.git@b38b934d246fca482eb6801f4ce79422954a635e",
@@ -50,12 +50,12 @@ deps = {
 
   # Mojo SDK for Mojo RPC experiments.
   "third_party/externals/mojo/public" : "https://chromium.googlesource.com/external/github.com/domokit/mojo_sdk@172be18ea745ab29aea132e6cb952e726dc32543",
-  
+
   # shaderc for the vulkan backend
-  "third_party/externals/shaderc2" : "https://github.com/google/shaderc.git@f76848a36d539888828006b9b7c088b3f362b607",
-  "third_party/externals/shaderc2/third_party/googletest" : "https://github.com/google/googletest.git@ff07a5de0e81580547f1685e101194ed1a4fcd56",
-  "third_party/externals/shaderc2/third_party/glslang" : "https://github.com/bsalomon/glslang.git@5dc8a76265ee31733b5a765e034ad7f5097a3cbe",
-  "third_party/externals/shaderc2/third_party/spirv-tools" : "https://github.com/KhronosGroup/SPIRV-Tools.git@c31a31942b3697f2f71148555e5ffa298a572dbd",
+  "third_party/externals/shaderc2" : "https://github.com/google/shaderc.git@d63c5e070fa966a33e1d352b2272bd57e1e9da00",
+  "third_party/externals/shaderc2/third_party/googletest" : "https://github.com/google/googletest.git@d225acc90bc3a8c420a9bcd1f033033c1ccd7fe0",
+  "third_party/externals/shaderc2/third_party/glslang" : "https://github.com/google/glslang.git@c3869fee412a90c4eadea0bf936ab2530d2dff51",
+  "third_party/externals/shaderc2/third_party/spirv-tools" : "https://github.com/KhronosGroup/SPIRV-Tools.git@6836e17f243eebfc4a2950faee49ed3a0015b20b",
 }
 
 deps_os = {

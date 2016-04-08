@@ -102,7 +102,17 @@ public:
         kNoPendingIO_Flag = kNoPendingIO_ScratchTextureFlag,
     };
 
-    GrBuffer* createBuffer(GrBufferType, size_t size, GrAccessPattern, uint32_t flags);
+    /**
+     * Returns a buffer.
+     *
+     * @param size            minimum size of buffer to return.
+     * @param intendedType    hint to the graphics subsystem about what the buffer will be used for.
+     * @param GrAccessPattern hint to the graphics subsystem about how the data will be accessed.
+     * @param flags           see Flags enum.
+     *
+     * @return the buffer if successful, otherwise nullptr.
+     */
+    GrBuffer* createBuffer(size_t size, GrBufferType intendedType, GrAccessPattern, uint32_t flags);
 
     GrTexture* createApproxTexture(const GrSurfaceDesc& desc, uint32_t flags) {
         SkASSERT(0 == flags || kNoPendingIO_Flag == flags);
@@ -140,10 +150,12 @@ public:
       * Wraps an existing texture with a GrRenderTarget object. This is useful when the provided
       * texture has a format that cannot be textured from by Skia, but we want to raster to it.
       *
+      * The texture is wrapped as borrowed. The texture object will not be freed once the
+      * render target is destroyed.
+      *
       * @return GrRenderTarget object or NULL on failure.
       */
-     GrRenderTarget* wrapBackendTextureAsRenderTarget(const GrBackendTextureDesc& desc,
-                                                      GrWrapOwnership = kBorrow_GrWrapOwnership);
+     GrRenderTarget* wrapBackendTextureAsRenderTarget(const GrBackendTextureDesc& desc);
 
 private:
     const GrBuffer* createInstancedIndexBuffer(const uint16_t* pattern,

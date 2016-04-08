@@ -79,7 +79,7 @@ GrGpu* GrVkGpu::Create(GrBackendContext backendContext, const GrContextOptions& 
 
 ////////////////////////////////////////////////////////////////////////////////
 
-GrVkGpu::GrVkGpu(GrContext* context, const GrContextOptions& options, 
+GrVkGpu::GrVkGpu(GrContext* context, const GrContextOptions& options,
                  const GrVkBackendContext* backendCtx)
     : INHERITED(context)
     , fVkInstance(backendCtx->fInstance)
@@ -122,7 +122,7 @@ GrVkGpu::GrVkGpu(GrContext* context, const GrContextOptions& options,
         VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,       // CmdPoolCreateFlags
         backendCtx->fQueueFamilyIndex,              // queueFamilyIndex
     };
-    GR_VK_CALL_ERRCHECK(this->vkInterface(), CreateCommandPool(fDevice, &cmdPoolInfo, nullptr, 
+    GR_VK_CALL_ERRCHECK(this->vkInterface(), CreateCommandPool(fDevice, &cmdPoolInfo, nullptr,
                                                                &fCmdPool));
 
     // must call this after creating the CommandPool
@@ -141,7 +141,7 @@ GrVkGpu::~GrVkGpu() {
     SkDEBUGCODE(VkResult res =) VK_CALL(QueueWaitIdle(fQueue));
     // VK_ERROR_DEVICE_LOST is acceptable when tearing down (see 4.2.4 in spec)
     SkASSERT(VK_SUCCESS == res || VK_ERROR_DEVICE_LOST == res);
- 
+
     // must call this just before we destroy the VkDevice
     fResourceProvider.destroyResources();
 
@@ -172,7 +172,7 @@ void GrVkGpu::submitCommandBuffer(SyncQueue sync) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-GrBuffer* GrVkGpu::onCreateBuffer(GrBufferType type, size_t size, GrAccessPattern accessPattern) {
+GrBuffer* GrVkGpu::onCreateBuffer(size_t size, GrBufferType type, GrAccessPattern accessPattern) {
     switch (type) {
         case kVertex_GrBufferType:
             SkASSERT(kDynamic_GrAccessPattern == accessPattern ||
@@ -208,7 +208,7 @@ bool GrVkGpu::onGetWritePixelsInfo(GrSurface* dstSurface, int width, int height,
     }
 
     if (dstSurface->config() != srcConfig) {
-        // TODO: This should fall back to drawing or copying to change config of dstSurface to 
+        // TODO: This should fall back to drawing or copying to change config of dstSurface to
         // match that of srcConfig.
         return false;
     }
@@ -319,7 +319,7 @@ bool GrVkGpu::uploadTexData(GrVkTexture* tex,
         VkDeviceSize offset = texTop*layout.rowPitch + left*bpp;
         VkDeviceSize size = height*layout.rowPitch;
         void* mapPtr;
-        err = GR_VK_CALL(interface, MapMemory(fDevice, tex->textureMemory(), offset, size, 0, 
+        err = GR_VK_CALL(interface, MapMemory(fDevice, tex->textureMemory(), offset, size, 0,
                                                 &mapPtr));
         if (err) {
             return false;
@@ -556,11 +556,11 @@ GrTexture* GrVkGpu::onWrapBackendTexture(const GrBackendTextureDesc& desc,
 
     GrVkTexture* texture = nullptr;
     if (renderTarget) {
-        texture = GrVkTextureRenderTarget::CreateWrappedTextureRenderTarget(this, surfDesc, 
+        texture = GrVkTextureRenderTarget::CreateWrappedTextureRenderTarget(this, surfDesc,
                                                                             lifeCycle, format,
                                                                             info);
     } else {
-        texture = GrVkTexture::CreateWrappedTexture(this, surfDesc, lifeCycle, format, 
+        texture = GrVkTexture::CreateWrappedTexture(this, surfDesc, lifeCycle, format,
                                                     info);
     }
     if (!texture) {
@@ -572,7 +572,7 @@ GrTexture* GrVkGpu::onWrapBackendTexture(const GrBackendTextureDesc& desc,
 
 GrRenderTarget* GrVkGpu::onWrapBackendRenderTarget(const GrBackendRenderTargetDesc& wrapDesc,
                                                    GrWrapOwnership ownership) {
-    
+
     const GrVkTextureInfo* info =
         reinterpret_cast<const GrVkTextureInfo*>(wrapDesc.fRenderTargetHandle);
     if (VK_NULL_HANDLE == info->fImage ||
@@ -594,7 +594,7 @@ GrRenderTarget* GrVkGpu::onWrapBackendRenderTarget(const GrBackendRenderTargetDe
     desc.fOrigin = resolve_origin(wrapDesc.fOrigin);
 
     GrVkRenderTarget* tgt = GrVkRenderTarget::CreateWrappedRenderTarget(this, desc,
-                                                                        lifeCycle, 
+                                                                        lifeCycle,
                                                                         info);
     if (tgt && wrapDesc.fStencilBits) {
         if (!createStencilAttachmentForRenderTarget(tgt, desc.fWidth, desc.fHeight)) {
@@ -644,14 +644,12 @@ void GrVkGpu::bindGeometry(const GrPrimitiveProcessor& primProc,
 GrStencilAttachment* GrVkGpu::createStencilAttachmentForRenderTarget(const GrRenderTarget* rt,
                                                                      int width,
                                                                      int height) {
-    SkASSERT(rt->asTexture());
     SkASSERT(width >= rt->width());
     SkASSERT(height >= rt->height());
 
     int samples = rt->numStencilSamples();
 
-    SkASSERT(this->vkCaps().stencilFormats().count());
-    const GrVkCaps::StencilFormat& sFmt = this->vkCaps().stencilFormats()[0];
+    const GrVkCaps::StencilFormat& sFmt = this->vkCaps().preferedStencilFormat();
 
     GrVkStencilAttachment* stencil(GrVkStencilAttachment::Create(this,
                                                                  GrGpuResource::kCached_LifeCycle,
@@ -975,7 +973,7 @@ void GrVkGpu::onClear(GrRenderTarget* target, const SkIRect& rect, GrColor color
 
     VkClearColorValue vkColor;
     GrColorToRGBAFloat(color, vkColor.float32);
-   
+
     GrVkRenderTarget* vkRT = static_cast<GrVkRenderTarget*>(target);
     VkImageLayout origDstLayout = vkRT->currentLayout();
 
@@ -1045,7 +1043,7 @@ void GrVkGpu::onClear(GrRenderTarget* target, const SkIRect& rect, GrColor color
     subRange.baseArrayLayer = 0;
     subRange.layerCount = 1;
 
-    // In the future we may not actually be doing this type of clear at all. If we are inside a 
+    // In the future we may not actually be doing this type of clear at all. If we are inside a
     // render pass or doing a non full clear then we will use CmdClearColorAttachment. The more
     // common use case will be clearing an attachment at the start of a render pass, in which case
     // we will use the clear load ops.
@@ -1058,31 +1056,35 @@ void GrVkGpu::onClear(GrRenderTarget* target, const SkIRect& rect, GrColor color
 inline bool can_copy_image(const GrSurface* dst,
                            const GrSurface* src,
                            const GrVkGpu* gpu) {
-    if (src->asTexture() &&
-        dst->asTexture() &&
-        src->origin() == dst->origin() &&
-        src->config() == dst->config()) {
+    // Currently we don't support msaa
+    if ((dst->asRenderTarget() && dst->asRenderTarget()->numColorSamples() > 1) ||
+        (src->asRenderTarget() && src->asRenderTarget()->numColorSamples() > 1)) {
+        return false;
+    }
+
+    // We require that all vulkan GrSurfaces have been created with transfer_dst and transfer_src 
+    // as image usage flags.
+    if (src->origin() == dst->origin() &&
+        GrBytesPerPixel(src->config()) == GrBytesPerPixel(dst->config())) {
         return true;
     }
 
     // How does msaa play into this? If a VkTexture is multisampled, are we copying the multisampled
-    // or the resolved image here?
+    // or the resolved image here? Im multisampled, Vulkan requires sample counts to be the same.
 
     return false;
 }
 
 void GrVkGpu::copySurfaceAsCopyImage(GrSurface* dst,
                                      GrSurface* src,
+                                     GrVkImage* dstImage,
+                                     GrVkImage* srcImage,
                                      const SkIRect& srcRect,
                                      const SkIPoint& dstPoint) {
     SkASSERT(can_copy_image(dst, src, this));
 
-    // Insert memory barriers to switch src and dst to transfer_source and transfer_dst layouts
-    GrVkTexture* dstTex = static_cast<GrVkTexture*>(dst->asTexture());
-    GrVkTexture* srcTex = static_cast<GrVkTexture*>(src->asTexture());
-
-    VkImageLayout origDstLayout = dstTex->currentLayout();
-    VkImageLayout origSrcLayout = srcTex->currentLayout();
+    VkImageLayout origDstLayout = dstImage->currentLayout();
+    VkImageLayout origSrcLayout = srcImage->currentLayout();
 
     VkPipelineStageFlags srcStageMask = GrVkMemory::LayoutToPipelineStageFlags(origDstLayout);
     VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
@@ -1091,28 +1093,28 @@ void GrVkGpu::copySurfaceAsCopyImage(GrSurface* dst,
     // the cache is flushed since it is only being written to.
     VkAccessFlags srcAccessMask = GrVkMemory::LayoutToSrcAccessMask(origDstLayout);;
     VkAccessFlags dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    
-    dstTex->setImageLayout(this,
-                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                           srcAccessMask,
-                           dstAccessMask,
-                           srcStageMask,
-                           dstStageMask,
-                           false);
-    
+
+    dstImage->setImageLayout(this,
+                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                            srcAccessMask,
+                            dstAccessMask,
+                            srcStageMask,
+                            dstStageMask,
+                            false);
+
     srcStageMask = GrVkMemory::LayoutToPipelineStageFlags(origSrcLayout);
     dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 
     srcAccessMask = GrVkMemory::LayoutToSrcAccessMask(origSrcLayout);
     dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
-    srcTex->setImageLayout(this,
-                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                           srcAccessMask,
-                           dstAccessMask,
-                           srcStageMask,
-                           dstStageMask,
-                           false);
+    srcImage->setImageLayout(this,
+                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                             srcAccessMask,
+                             dstAccessMask,
+                             srcStageMask,
+                             dstStageMask,
+                             false);
 
     // Flip rect if necessary
     SkIRect srcVkRect = srcRect;
@@ -1134,12 +1136,122 @@ void GrVkGpu::copySurfaceAsCopyImage(GrSurface* dst,
     copyRegion.extent = { (uint32_t)srcVkRect.width(), (uint32_t)srcVkRect.height(), 0 };
 
     fCurrentCmdBuffer->copyImage(this,
-                                 srcTex,
+                                 srcImage,
                                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                 dstTex,
+                                 dstImage,
                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                  1,
                                  &copyRegion);
+}
+
+inline bool can_copy_as_blit(const GrSurface* dst,
+                             const GrSurface* src,
+                             const GrVkImage* dstImage,
+                             const GrVkImage* srcImage,
+                             const GrVkGpu* gpu) {
+    // We require that all vulkan GrSurfaces have been created with transfer_dst and transfer_src 
+    // as image usage flags.
+    const GrVkCaps& caps = gpu->vkCaps();
+    if (!caps.configCanBeDstofBlit(dst->config(), dstImage->isLinearTiled()) ||
+        !caps.configCanBeSrcofBlit(src->config(), srcImage->isLinearTiled())) {
+        return false;
+    }
+
+    // We cannot blit images that are multisampled. Will need to figure out if we can blit the
+    // resolved msaa though.
+    if ((dst->asRenderTarget() && dst->asRenderTarget()->numColorSamples() > 1) ||
+        (src->asRenderTarget() && src->asRenderTarget()->numColorSamples() > 1)) {
+        return false;
+    }
+
+    return true;
+}
+
+void GrVkGpu::copySurfaceAsBlit(GrSurface* dst,
+                                GrSurface* src,
+                                GrVkImage* dstImage,
+                                GrVkImage* srcImage,
+                                const SkIRect& srcRect,
+                                const SkIPoint& dstPoint) {
+    SkASSERT(can_copy_as_blit(dst, src, dstImage, srcImage, this));
+
+    VkImageLayout origDstLayout = dstImage->currentLayout();
+    VkImageLayout origSrcLayout = srcImage->currentLayout();
+
+    VkPipelineStageFlags srcStageMask = GrVkMemory::LayoutToPipelineStageFlags(origDstLayout);
+    VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+    VkAccessFlags srcAccessMask = GrVkMemory::LayoutToSrcAccessMask(origDstLayout);;
+    VkAccessFlags dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    dstImage->setImageLayout(this,
+                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                             srcAccessMask,
+                             dstAccessMask,
+                             srcStageMask,
+                             dstStageMask,
+                             false);
+
+    srcStageMask = GrVkMemory::LayoutToPipelineStageFlags(origSrcLayout);
+    dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+    srcAccessMask = GrVkMemory::LayoutToSrcAccessMask(origSrcLayout);
+    dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+    srcImage->setImageLayout(this,
+                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                             srcAccessMask,
+                             dstAccessMask,
+                             srcStageMask,
+                             dstStageMask,
+                             false);
+
+    // Flip rect if necessary
+    SkIRect srcVkRect;
+    srcVkRect.fLeft = srcRect.fLeft;
+    srcVkRect.fRight = srcRect.fRight;
+    SkIRect dstRect;
+    dstRect.fLeft = dstPoint.fX;
+    dstRect.fRight = dstPoint.fX + srcRect.width();
+
+    if (kBottomLeft_GrSurfaceOrigin == src->origin()) {
+        srcVkRect.fTop = src->height() - srcRect.fBottom;
+        srcVkRect.fBottom = src->height() - srcRect.fTop;
+    } else {
+        srcVkRect.fTop = srcRect.fTop;
+        srcVkRect.fBottom = srcRect.fBottom;
+    }
+
+    if (kBottomLeft_GrSurfaceOrigin == dst->origin()) {
+        dstRect.fTop = dst->height() - dstPoint.fY - srcVkRect.height();
+    } else {
+        dstRect.fTop = dstPoint.fY;
+    }
+    dstRect.fBottom = dstRect.fTop + srcVkRect.height();
+
+    // If we have different origins, we need to flip the top and bottom of the dst rect so that we
+    // get the correct origintation of the copied data.
+    if (src->origin() != dst->origin()) {
+        SkTSwap(dstRect.fTop, dstRect.fBottom);
+    }
+
+    VkImageBlit blitRegion;
+    memset(&blitRegion, 0, sizeof(VkImageBlit));
+    blitRegion.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    blitRegion.srcOffsets[0] = { srcVkRect.fLeft, srcVkRect.fTop, 0 };
+    blitRegion.srcOffsets[1] = { srcVkRect.fRight, srcVkRect.fBottom, 0 };
+    blitRegion.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    blitRegion.dstOffsets[0] = { dstRect.fLeft, dstRect.fTop, 0 };
+    blitRegion.dstOffsets[1] = { dstRect.fRight, dstRect.fBottom, 0 };
+
+    fCurrentCmdBuffer->blitImage(this,
+                                 srcImage,
+                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                 dstImage,
+                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                 1,
+                                 &blitRegion,
+                                 VK_FILTER_NEAREST); // We never scale so any filter works here
 }
 
 inline bool can_copy_as_draw(const GrSurface* dst,
@@ -1159,8 +1271,28 @@ bool GrVkGpu::onCopySurface(GrSurface* dst,
                             GrSurface* src,
                             const SkIRect& srcRect,
                             const SkIPoint& dstPoint) {
+    GrVkImage* dstImage;
+    GrVkImage* srcImage;
+    if (dst->asTexture()) {
+        dstImage = static_cast<GrVkTexture*>(dst->asTexture());
+    } else {
+        SkASSERT(dst->asRenderTarget());
+        dstImage = static_cast<GrVkRenderTarget*>(dst->asRenderTarget());
+    }
+    if (src->asTexture()) {
+        srcImage = static_cast<GrVkTexture*>(src->asTexture());
+    } else {
+        SkASSERT(src->asRenderTarget());
+        srcImage = static_cast<GrVkRenderTarget*>(src->asRenderTarget());
+    }
+
     if (can_copy_image(dst, src, this)) {
-        this->copySurfaceAsCopyImage(dst, src, srcRect, dstPoint);
+        this->copySurfaceAsCopyImage(dst, src, dstImage, srcImage, srcRect, dstPoint);
+        return true;
+    }
+
+    if (can_copy_as_blit(dst, src, dstImage, srcImage, this)) {
+        this->copySurfaceAsBlit(dst, src, dstImage, srcImage, srcRect, dstPoint);
         return true;
     }
 
@@ -1225,9 +1357,9 @@ bool GrVkGpu::onReadPixels(GrSurface* surface,
                         dstStageMask,
                         false);
 
-    GrVkTransferBuffer* transferBuffer = 
-        static_cast<GrVkTransferBuffer*>(this->createBuffer(kXferGpuToCpu_GrBufferType,
-                                                            rowBytes * height,
+    GrVkTransferBuffer* transferBuffer =
+        static_cast<GrVkTransferBuffer*>(this->createBuffer(rowBytes * height,
+                                                            kXferGpuToCpu_GrBufferType,
                                                             kStream_GrAccessPattern));
 
     bool flipY = kBottomLeft_GrSurfaceOrigin == surface->origin();
@@ -1441,4 +1573,3 @@ void GrVkGpu::onDraw(const GrPipeline& pipeline,
 #endif
 #endif
 }
-

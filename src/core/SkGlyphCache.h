@@ -242,7 +242,7 @@ private:
     static void OffsetResults(const SkGlyph::Intercept* intercept, SkScalar scale,
                               SkScalar xPos, SkScalar* array, int* count);
     static void AddInterval(SkScalar val, SkGlyph::Intercept* intercept);
-    static void AddPoints(const SkPoint* pts, int ptCount, const SkScalar bounds[2], 
+    static void AddPoints(const SkPoint* pts, int ptCount, const SkScalar bounds[2],
                           bool yAxis, SkGlyph::Intercept* intercept);
     static void AddLine(const SkPoint pts[2], SkScalar axis, bool yAxis,
                         SkGlyph::Intercept* intercept);
@@ -285,13 +285,15 @@ public:
     SkAutoGlyphCache(const SkPaint& paint,
                      const SkSurfaceProps* surfaceProps,
                      const SkMatrix* matrix)
-        : INHERITED(paint.detachCache(surfaceProps, SkPaint::FakeGamma::On, matrix))
+        : INHERITED(paint.detachCache(surfaceProps,
+                                      SkPaint::kFakeGammaAndBoostContrast_ScalerContextFlags,
+                                      matrix))
     {}
     SkAutoGlyphCache(const SkPaint& paint,
                      const SkSurfaceProps* surfaceProps,
-                     SkPaint::FakeGamma fakeGamma,
+                     uint32_t scalerContextFlags,
                      const SkMatrix* matrix)
-        : INHERITED(paint.detachCache(surfaceProps, fakeGamma, matrix))
+        : INHERITED(paint.detachCache(surfaceProps, scalerContextFlags, matrix))
     {}
 private:
     using INHERITED = std::unique_ptr<SkGlyphCache, SkGlyphCache::AttachCacheFunctor>;
@@ -302,7 +304,7 @@ public:
     SkAutoGlyphCacheNoGamma(const SkPaint& paint,
                             const SkSurfaceProps* surfaceProps,
                             const SkMatrix* matrix)
-        : SkAutoGlyphCache(paint, surfaceProps, SkPaint::FakeGamma::Off, matrix)
+        : SkAutoGlyphCache(paint, surfaceProps, SkPaint::kNone_ScalerContextFlags, matrix)
     {}
 };
 #define SkAutoGlyphCache(...) SK_REQUIRE_LOCAL_VAR(SkAutoGlyphCache)

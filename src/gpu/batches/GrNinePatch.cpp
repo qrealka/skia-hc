@@ -74,7 +74,7 @@ public:
         return str;
     }
 
-    void computePipelineOptimizations(GrInitInvariantOutput* color, 
+    void computePipelineOptimizations(GrInitInvariantOutput* color,
                                       GrInitInvariantOutput* coverage,
                                       GrBatchToXPOverrides* overrides) const override {
         color->setUnknownFourComponents();
@@ -90,8 +90,6 @@ private:
             SkDebugf("Couldn't create GrGeometryProcessor\n");
             return;
         }
-
-        target->initDraw(gp);
 
         size_t vertexStride = gp->getVertexStride();
         int instanceCount = fGeoData.count();
@@ -138,7 +136,7 @@ private:
                 verts += kVertsPerRect * vertexStride;
             }
         }
-        helper.recordDraw(target);
+        helper.recordDraw(target, gp);
     }
 
     void initBatchTracker(const GrXPOverridesForBatch& overrides) override {

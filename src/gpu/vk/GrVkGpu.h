@@ -106,7 +106,7 @@ public:
                                VkPipelineStageFlags dstStageMask,
                                bool byRegion,
                                VkImageMemoryBarrier* barrier) const;
-    
+
     shaderc_compiler_t shadercCompiler() const {
         return fCompiler;
     }
@@ -129,10 +129,9 @@ private:
 
     GrRenderTarget* onWrapBackendRenderTarget(const GrBackendRenderTargetDesc&,
                                               GrWrapOwnership) override;
-    GrRenderTarget* onWrapBackendTextureAsRenderTarget(const GrBackendTextureDesc&,
-                                                       GrWrapOwnership) override { return NULL; }
+    GrRenderTarget* onWrapBackendTextureAsRenderTarget(const GrBackendTextureDesc&) override { return NULL; }
 
-    GrBuffer* onCreateBuffer(GrBufferType, size_t size, GrAccessPattern) override;
+    GrBuffer* onCreateBuffer(size_t size, GrBufferType type, GrAccessPattern) override;
 
     void onClear(GrRenderTarget*, const SkIRect& rect, GrColor color) override;
 
@@ -169,14 +168,23 @@ private:
     void bindGeometry(const GrPrimitiveProcessor&, const GrNonInstancedMesh&);
 
     // Ends and submits the current command buffer to the queue and then creates a new command
-    // buffer and begins it. If sync is set to kForce_SyncQueue, the function will wait for all 
+    // buffer and begins it. If sync is set to kForce_SyncQueue, the function will wait for all
     // work in the queue to finish before returning.
     void submitCommandBuffer(SyncQueue sync);
 
     void copySurfaceAsCopyImage(GrSurface* dst,
                                 GrSurface* src,
+                                GrVkImage* dstImage,
+                                GrVkImage* srcImage,
                                 const SkIRect& srcRect,
                                 const SkIPoint& dstPoint);
+
+    void copySurfaceAsBlit(GrSurface* dst,
+                           GrSurface* src,
+                           GrVkImage* dstImage,
+                           GrVkImage* srcImage,
+                           const SkIRect& srcRect,
+                           const SkIPoint& dstPoint);
 
     void copySurfaceAsDraw(GrSurface* dst,
                            GrSurface* src,

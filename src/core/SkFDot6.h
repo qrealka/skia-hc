@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2006 The Android Open Source Project
  *
@@ -10,6 +9,7 @@
 #ifndef SkFDot6_DEFINED
 #define SkFDot6_DEFINED
 
+#include "SkFixed.h"
 #include "SkScalar.h"
 #include "SkMath.h"
 

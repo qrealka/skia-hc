@@ -12,20 +12,16 @@
 #include "SkSpecialSurface.h"
 #include "SkWriteBuffer.h"
 
-SkImageFilter* SkPaintImageFilter::Create(const SkPaint& paint, const CropRect* cropRect) {
-    return new SkPaintImageFilter(paint, cropRect);
-}
-
 SkPaintImageFilter::SkPaintImageFilter(const SkPaint& paint, const CropRect* cropRect)
-  : INHERITED(0, nullptr, cropRect)
-  , fPaint(paint) {
+    : INHERITED(nullptr, 0, cropRect)
+    , fPaint(paint) {
 }
 
-SkFlattenable* SkPaintImageFilter::CreateProc(SkReadBuffer& buffer) {
+sk_sp<SkFlattenable> SkPaintImageFilter::CreateProc(SkReadBuffer& buffer) {
     SK_IMAGEFILTER_UNFLATTEN_COMMON(common, 0);
     SkPaint paint;
     buffer.readPaint(&paint);
-    return Create(paint, &common.cropRect());
+    return SkPaintImageFilter::Make(paint, &common.cropRect());
 }
 
 void SkPaintImageFilter::flatten(SkWriteBuffer& buffer) const {
@@ -70,16 +66,14 @@ sk_sp<SkSpecialImage> SkPaintImageFilter::onFilterImage(SkSpecialImage* source,
     return surf->makeImageSnapshot();
 }
 
-bool SkPaintImageFilter::canComputeFastBounds() const {
-    // http:skbug.com/4627: "make computeFastBounds and onFilterBounds() CropRect-aware"
-    // computeFastBounds() doesn't currently take the crop rect into account,
-    // so we can't compute it. If a full crop rect is set, we should return true here.
-    return false;
+bool SkPaintImageFilter::affectsTransparentBlack() const {
+    return true;
 }
 
 #ifndef SK_IGNORE_TO_STRING
 void SkPaintImageFilter::toString(SkString* str) const {
     str->appendf("SkPaintImageFilter: (");
+    fPaint.toString(str);
     str->append(")");
 }
 #endif

@@ -33,7 +33,7 @@ public:
                            bool overrideFilterQuality,
                            SkFilterQuality quality)
         : INHERITED(width, height)
-        , fOverdrawXfermode(overdrawViz ? SkOverdrawMode::Create() : nullptr)
+        , fOverdrawXfermode(overdrawViz ? SkOverdrawMode::Make() : nullptr)
         , fOverrideFilterQuality(overrideFilterQuality)
         , fFilterQuality(quality) {}
 
@@ -42,7 +42,7 @@ protected:
         if (*paint) {
             if (nullptr != fOverdrawXfermode.get()) {
                 paint->writable()->setAntiAlias(false);
-                paint->writable()->setXfermode(fOverdrawXfermode.get());
+                paint->writable()->setXfermode(fOverdrawXfermode);
             }
 
             if (fOverrideFilterQuality) {
@@ -60,7 +60,7 @@ protected:
     }
 
 private:
-    SkAutoTUnref<SkXfermode> fOverdrawXfermode;
+    sk_sp<SkXfermode> fOverdrawXfermode;
 
     bool fOverrideFilterQuality;
     SkFilterQuality fFilterQuality;
@@ -218,13 +218,13 @@ void SkDebugCanvas::drawTo(SkCanvas* canvas, int index, int m) {
     if (fPaintFilterCanvas) {
         fPaintFilterCanvas->addCanvas(canvas);
         canvas = fPaintFilterCanvas.get();
-    
+
     }
 
     if (fMegaVizMode) {
         this->markActiveCommands(index);
     }
-   
+
 #if SK_SUPPORT_GPU
     // If we have a GPU backend we can also visualize the batching information
     GrAuditTrail* at = nullptr;
@@ -237,7 +237,7 @@ void SkDebugCanvas::drawTo(SkCanvas* canvas, int index, int m) {
         if (i == index && fFilter) {
             canvas->clear(0xAAFFFFFF);
         }
-   
+
 #if SK_SUPPORT_GPU
         GrAuditTrail::AutoCollectBatches* acb = nullptr;
         if (at) {
@@ -457,7 +457,7 @@ void SkDebugCanvas::cleanupAuditTrail(SkCanvas* canvas) {
 
 Json::Value SkDebugCanvas::toJSON(UrlDataManager& urlDataManager, int n, SkCanvas* canvas) {
     this->drawAndCollectBatches(n, canvas);
-    
+
     // now collect json
 #if SK_SUPPORT_GPU
     GrAuditTrail* at = this->getAuditTrail(canvas);

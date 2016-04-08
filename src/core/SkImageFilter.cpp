@@ -69,25 +69,38 @@ void SkImageFilter::CropRect::toString(SkString* str) const {
 
 void SkImageFilter::CropRect::applyTo(const SkIRect& imageBounds,
                                       const SkMatrix& ctm,
+                                      bool embiggen,
                                       SkIRect* cropped) const {
     *cropped = imageBounds;
     if (fFlags) {
         SkRect devCropR;
         ctm.mapRect(&devCropR, fRect);
-        const SkIRect devICropR = devCropR.roundOut();
+        SkIRect devICropR = devCropR.roundOut();
 
-        // Compute the left/top first, in case we have to read them to compute right/bottom
+        // Compute the left/top first, in case we need to modify the right/bottom for a missing edge
         if (fFlags & kHasLeft_CropEdge) {
-            cropped->fLeft = devICropR.fLeft;
+            if (embiggen || devICropR.fLeft > cropped->fLeft) {
+                cropped->fLeft = devICropR.fLeft;
+            }
+        } else {
+            devICropR.fRight = cropped->fLeft + devICropR.width();
         }
         if (fFlags & kHasTop_CropEdge) {
-            cropped->fTop = devICropR.fTop;
+            if (embiggen || devICropR.fTop > cropped->fTop) {
+                cropped->fTop = devICropR.fTop;
+            }
+        } else {
+            devICropR.fBottom = cropped->fTop + devICropR.height();
         }
         if (fFlags & kHasWidth_CropEdge) {
-            cropped->fRight = cropped->fLeft + devICropR.width();
+            if (embiggen || devICropR.fRight < cropped->fRight) {
+                cropped->fRight = devICropR.fRight;
+            }
         }
         if (fFlags & kHasHeight_CropEdge) {
-            cropped->fBottom = cropped->fTop + devICropR.height();
+            if (embiggen || devICropR.fBottom < cropped->fBottom) {
+                cropped->fBottom = devICropR.fBottom;
+            }
         }
     }
 }
@@ -105,22 +118,14 @@ static int32_t next_image_filter_unique_id() {
     return id;
 }
 
-SkImageFilter::Common::~Common() {
-    for (int i = 0; i < fInputs.count(); ++i) {
-        SkSafeUnref(fInputs[i]);
-    }
-}
-
 void SkImageFilter::Common::allocInputs(int count) {
-    const size_t size = count * sizeof(SkImageFilter*);
     fInputs.reset(count);
-    sk_bzero(fInputs.get(), size);
 }
 
 void SkImageFilter::Common::detachInputs(SkImageFilter** inputs) {
-    const size_t size = fInputs.count() * sizeof(SkImageFilter*);
-    memcpy(inputs, fInputs.get(), size);
-    sk_bzero(fInputs.get(), size);
+    for (int i = 0; i < fInputs.count(); ++i) {
+        inputs[i] = fInputs[i].release();
+    }
 }
 
 bool SkImageFilter::Common::unflatten(SkReadBuffer& buffer, int expectedCount) {
@@ -135,7 +140,7 @@ bool SkImageFilter::Common::unflatten(SkReadBuffer& buffer, int expectedCount) {
     this->allocInputs(count);
     for (int i = 0; i < count; i++) {
         if (buffer.readBool()) {
-            fInputs[i] = buffer.readImageFilter();
+            fInputs[i] = sk_sp<SkImageFilter>(buffer.readImageFilter());
         }
         if (!buffer.isValid()) {
             return false;
@@ -158,6 +163,22 @@ bool SkImageFilter::Common::unflatten(SkReadBuffer& buffer, int expectedCount) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+SkImageFilter::SkImageFilter(sk_sp<SkImageFilter>* inputs,
+                             int inputCount,
+                             const CropRect* cropRect)
+    : fInputCount(inputCount),
+    fInputs(new SkImageFilter*[inputCount]),
+    fUsesSrcInput(false),
+    fCropRect(cropRect ? *cropRect : CropRect(SkRect(), 0x0)),
+    fUniqueID(next_image_filter_unique_id()) {
+    for (int i = 0; i < inputCount; ++i) {
+        if (nullptr == inputs[i] || inputs[i]->usesSrcInput()) {
+            fUsesSrcInput = true;
+        }
+        fInputs[i] = SkSafeRef(inputs[i].get());
+    }
+}
+
 SkImageFilter::SkImageFilter(int inputCount, SkImageFilter** inputs, const CropRect* cropRect)
   : fInputCount(inputCount),
     fInputs(new SkImageFilter*[inputCount]),
@@ -168,8 +189,7 @@ SkImageFilter::SkImageFilter(int inputCount, SkImageFilter** inputs, const CropR
         if (nullptr == inputs[i] || inputs[i]->usesSrcInput()) {
             fUsesSrcInput = true;
         }
-        fInputs[i] = inputs[i];
-        SkSafeRef(fInputs[i]);
+        fInputs[i] = SkSafeRef(inputs[i]);
     }
 }
 
@@ -275,7 +295,8 @@ bool SkImageFilter::filterInputDeprecated(int index, Proxy* proxy, const SkBitma
         return true;
     }
 
-    sk_sp<SkSpecialImage> specialSrc(SkSpecialImage::internal_fromBM(proxy, src));
+    // SRGBTODO: Don't handle sRGB here, in anticipation of this code path being deleted.
+    sk_sp<SkSpecialImage> specialSrc(SkSpecialImage::internal_fromBM(proxy, src, nullptr));
     if (!specialSrc) {
         return false;
     }
@@ -299,7 +320,7 @@ SkIRect SkImageFilter::filterBounds(const SkIRect& src, const SkMatrix& ctm,
         SkIRect bounds = this->onFilterBounds(src, ctm, direction);
         bounds = this->onFilterNodeBounds(bounds, ctm, direction);
         SkIRect dst;
-        this->getCropRect().applyTo(bounds, ctm, &dst);
+        this->getCropRect().applyTo(bounds, ctm, this->affectsTransparentBlack(), &dst);
         return dst;
     }
 }
@@ -321,6 +342,9 @@ SkRect SkImageFilter::computeFastBounds(const SkRect& src) const {
 }
 
 bool SkImageFilter::canComputeFastBounds() const {
+    if (this->affectsTransparentBlack()) {
+        return false;
+    }
     for (int i = 0; i < fInputCount; i++) {
         SkImageFilter* input = this->getInput(i);
         if (input && !input->canComputeFastBounds()) {
@@ -354,7 +378,7 @@ sk_sp<SkSpecialImage> SkImageFilter::onFilterImage(SkSpecialImage* src, const Co
         return nullptr;
     }
 
-    return SkSpecialImage::internal_fromBM(src->internal_getProxy(), resultBM);
+    return SkSpecialImage::internal_fromBM(src->internal_getProxy(), resultBM, &src->props());
 }
 
 bool SkImageFilter::canFilterImageGPU() const {
@@ -395,6 +419,7 @@ bool SkImageFilter::filterImageGPUDeprecated(Proxy* proxy, const SkBitmap& src, 
     SkMatrix matrix(ctx.ctm());
     matrix.postTranslate(SkIntToScalar(-bounds.left()), SkIntToScalar(-bounds.top()));
     GrPaint paint;
+    // SRGBTODO: Don't handle sRGB here, in anticipation of this code path being deleted.
     if (this->asFragmentProcessor(&fp, srcTexture, matrix, bounds)) {
         SkASSERT(fp);
         paint.addColorFragmentProcessor(fp)->unref();
@@ -430,7 +455,7 @@ bool SkImageFilter::asAColorFilter(SkColorFilter** filterPtr) const {
 bool SkImageFilter::applyCropRect(const Context& ctx, const SkIRect& srcBounds,
                                   SkIRect* dstBounds) const {
     SkIRect temp = this->onFilterNodeBounds(srcBounds, ctx.ctm(), kForward_MapDirection);
-    fCropRect.applyTo(temp, ctx.ctm(), dstBounds);
+    fCropRect.applyTo(temp, ctx.ctm(), this->affectsTransparentBlack(), dstBounds);
     // Intersect against the clip bounds, in case the crop rect has
     // grown the bounds beyond the original clip. This can happen for
     // example in tiling, where the clip is much smaller than the filtered
@@ -446,7 +471,7 @@ bool SkImageFilter::applyCropRectDeprecated(const Context& ctx, Proxy* proxy, co
     src.getBounds(&srcBounds);
     srcBounds.offset(*srcOffset);
     SkIRect dstBounds = this->onFilterNodeBounds(srcBounds, ctx.ctm(), kForward_MapDirection);
-    fCropRect.applyTo(dstBounds, ctx.ctm(), bounds);
+    fCropRect.applyTo(dstBounds, ctx.ctm(), this->affectsTransparentBlack(), bounds);
     if (!bounds->intersect(ctx.clipBounds())) {
         return false;
     }
@@ -497,7 +522,7 @@ sk_sp<SkSpecialImage> SkImageFilter::applyCropRect(const Context& ctx,
     srcBounds = SkIRect::MakeXYWH(srcOffset->fX, srcOffset->fY, src->width(), src->height());
 
     SkIRect dstBounds = this->onFilterNodeBounds(srcBounds, ctx.ctm(), kForward_MapDirection);
-    fCropRect.applyTo(dstBounds, ctx.ctm(), bounds);
+    fCropRect.applyTo(dstBounds, ctx.ctm(), this->affectsTransparentBlack(), bounds);
     if (!bounds->intersect(ctx.clipBounds())) {
         return nullptr;
     }
@@ -550,17 +575,18 @@ bool SkImageFilter::asFragmentProcessor(GrFragmentProcessor**, GrTexture*,
     return false;
 }
 
-SkImageFilter* SkImageFilter::CreateMatrixFilter(const SkMatrix& matrix,
-                                                 SkFilterQuality filterQuality,
-                                                 SkImageFilter* input) {
-    return SkMatrixImageFilter::Create(matrix, filterQuality, input);
+sk_sp<SkImageFilter> SkImageFilter::MakeMatrixFilter(const SkMatrix& matrix,
+                                                     SkFilterQuality filterQuality,
+                                                     sk_sp<SkImageFilter> input) {
+    return SkMatrixImageFilter::Make(matrix, filterQuality, std::move(input));
 }
 
-SkImageFilter* SkImageFilter::newWithLocalMatrix(const SkMatrix& matrix) const {
+sk_sp<SkImageFilter> SkImageFilter::makeWithLocalMatrix(const SkMatrix& matrix) const {
     // SkLocalMatrixImageFilter takes SkImage* in its factory, but logically that parameter
     // is *always* treated as a const ptr. Hence the const-cast here.
     //
-    return SkLocalMatrixImageFilter::Create(matrix, const_cast<SkImageFilter*>(this));
+    SkImageFilter* nonConstThis = const_cast<SkImageFilter*>(this);
+    return SkLocalMatrixImageFilter::Make(matrix, sk_ref_sp<SkImageFilter>(nonConstThis));
 }
 
 sk_sp<SkSpecialImage> SkImageFilter::filterInput(int index,
@@ -596,7 +622,8 @@ bool SkImageFilter::filterInputGPUDeprecated(int index, SkImageFilter::Proxy* pr
         return true;
     }
 
-    sk_sp<SkSpecialImage> specialSrc(SkSpecialImage::internal_fromBM(proxy, src));
+    // SRGBTODO: Don't handle sRGB here, in anticipation of this code path being deleted.
+    sk_sp<SkSpecialImage> specialSrc(SkSpecialImage::internal_fromBM(proxy, src, nullptr));
     if (!specialSrc) {
         return false;
     }
@@ -804,4 +831,3 @@ bool SkImageFilter::DeviceProxy::filterImage(const SkImageFilter* filter, const 
                                        SkBitmap* result, SkIPoint* offset) {
     return fDevice->filterImage(filter, src, ctx, result, offset);
 }
-

@@ -37,16 +37,17 @@ static SkVector map_sigma(const SkSize& localSigma, const SkMatrix& ctm) {
 
 SkBlurImageFilter::SkBlurImageFilter(SkScalar sigmaX,
                                      SkScalar sigmaY,
-                                     SkImageFilter* input,
+                                     sk_sp<SkImageFilter> input,
                                      const CropRect* cropRect)
-    : INHERITED(1, &input, cropRect), fSigma(SkSize::Make(sigmaX, sigmaY)) {
+    : INHERITED(&input, 1, cropRect)
+    , fSigma(SkSize::Make(sigmaX, sigmaY)) {
 }
 
-SkFlattenable* SkBlurImageFilter::CreateProc(SkReadBuffer& buffer) {
+sk_sp<SkFlattenable> SkBlurImageFilter::CreateProc(SkReadBuffer& buffer) {
     SK_IMAGEFILTER_UNFLATTEN_COMMON(common, 1);
     SkScalar sigmaX = buffer.readScalar();
     SkScalar sigmaY = buffer.readScalar();
-    return Create(sigmaX, sigmaY, common.getInput(0), &common.cropRect());
+    return Make(sigmaX, sigmaY, common.getInput(0), &common.cropRect());
 }
 
 void SkBlurImageFilter::flatten(SkWriteBuffer& buffer) const {
@@ -112,6 +113,7 @@ sk_sp<SkSpecialImage> SkBlurImageFilter::onFilterImage(SkSpecialImage* source,
         SkAutoTUnref<GrTexture> tex(SkGpuBlurUtils::GaussianBlur(inputTexture->getContext(),
                                                                  inputTexture,
                                                                  false,
+                                                                 source->props().allowSRGBInputs(),
                                                                  SkRect::Make(dstBounds),
                                                                  &inputBoundsF,
                                                                  sigma.x(),
@@ -123,7 +125,7 @@ sk_sp<SkSpecialImage> SkBlurImageFilter::onFilterImage(SkSpecialImage* source,
         return SkSpecialImage::MakeFromGpu(source->internal_getProxy(),
                                            SkIRect::MakeWH(dstBounds.width(), dstBounds.height()),
                                            kNeedNewImageUniqueID_SpecialImage,
-                                           tex);
+                                           tex, &source->props());
     }
 #endif
 
@@ -212,10 +214,10 @@ sk_sp<SkSpecialImage> SkBlurImageFilter::onFilterImage(SkSpecialImage* source,
         SkOpts::box_blur_xy(t,  h,  dstBoundsT,   d, kernelSizeY3, highOffsetY, highOffsetY, h, w);
     }
 
-    return SkSpecialImage::MakeFromRaster(source->internal_getProxy(), 
+    return SkSpecialImage::MakeFromRaster(source->internal_getProxy(),
                                           SkIRect::MakeWH(dstBounds.width(),
                                                           dstBounds.height()),
-                                          dst);
+                                          dst, &source->props());
 }
 
 

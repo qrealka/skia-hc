@@ -105,7 +105,6 @@ public:
     // primitives
     virtual bool readBool();
     virtual SkColor readColor();
-    virtual SkFixed readFixed();
     virtual int32_t readInt();
     virtual SkScalar readScalar();
     virtual uint32_t readUInt();
@@ -127,25 +126,17 @@ public:
     void readPaint(SkPaint* paint) { paint->unflatten(*this); }
 
     virtual SkFlattenable* readFlattenable(SkFlattenable::Type);
-    template <typename T> T* readFlattenable() {
-        return (T*) this->readFlattenable(T::GetFlattenableType());
+    template <typename T> sk_sp<T> readFlattenable() {
+        return sk_sp<T>((T*)this->readFlattenable(T::GetFlattenableType()));
     }
-    sk_sp<SkColorFilter> readColorFilter() {
-        return sk_sp<SkColorFilter>(this->readFlattenable<SkColorFilter>());
-    }
-    sk_sp<SkDrawLooper> readDrawLooper() {
-        return sk_sp<SkDrawLooper>(this->readFlattenable<SkDrawLooper>());
-    }
-    SkImageFilter* readImageFilter() { return this->readFlattenable<SkImageFilter>(); }
-    SkMaskFilter*  readMaskFilter()  { return this->readFlattenable<SkMaskFilter>(); }
-    sk_sp<SkPathEffect> readPathEffect()  {
-        return sk_sp<SkPathEffect>(this->readFlattenable<SkPathEffect>());
-    }
-    sk_sp<SkRasterizer> readRasterizer() {
-        return sk_sp<SkRasterizer>(this->readFlattenable<SkRasterizer>());
-    }
-    sk_sp<SkShader> readShader()     { return sk_sp<SkShader>(this->readFlattenable<SkShader>()); }
-    SkXfermode*    readXfermode()    { return this->readFlattenable<SkXfermode>(); }
+    sk_sp<SkColorFilter> readColorFilter() { return this->readFlattenable<SkColorFilter>(); }
+    sk_sp<SkDrawLooper> readDrawLooper() { return this->readFlattenable<SkDrawLooper>(); }
+    sk_sp<SkImageFilter> readImageFilter() { return this->readFlattenable<SkImageFilter>(); }
+    sk_sp<SkMaskFilter> readMaskFilter() { return this->readFlattenable<SkMaskFilter>(); }
+    sk_sp<SkPathEffect> readPathEffect() { return this->readFlattenable<SkPathEffect>(); }
+    sk_sp<SkRasterizer> readRasterizer() { return this->readFlattenable<SkRasterizer>(); }
+    sk_sp<SkShader> readShader() { return this->readFlattenable<SkShader>(); }
+    sk_sp<SkXfermode> readXfermode() { return this->readFlattenable<SkXfermode>(); }
 
     /**
      *  Like readFlattenable() but explicitly just skips the data that was written for the
@@ -197,20 +188,8 @@ public:
      *  were created/written by the writer. SkPicture uses this.
      */
     void setFactoryPlayback(SkFlattenable::Factory array[], int count) {
-        fFactoryTDArray = nullptr;
         fFactoryArray = array;
         fFactoryCount = count;
-    }
-
-    /**
-     *  Call this with an initially empty array, so the reader can cache each
-     *  factory it sees by name. Used by the pipe code in conjunction with
-     *  SkWriteBuffer::setNamedFactoryRecorder.
-     */
-    void setFactoryArray(SkTDArray<SkFlattenable::Factory>* array) {
-        fFactoryTDArray = array;
-        fFactoryArray = nullptr;
-        fFactoryCount = 0;
     }
 
     /**
@@ -242,7 +221,6 @@ private:
     SkTypeface** fTFArray;
     int        fTFCount;
 
-    SkTDArray<SkFlattenable::Factory>* fFactoryTDArray;
     SkFlattenable::Factory* fFactoryArray;
     int                     fFactoryCount;
 

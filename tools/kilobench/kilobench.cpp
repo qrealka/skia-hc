@@ -20,6 +20,7 @@
 #include "Timer.h"
 #include "VisualSKPBench.h"
 #include "gl/GrGLDefines.h"
+#include "gl/GrGLUtil.h"
 #include "../private/SkMutex.h"
 #include "../private/SkSemaphore.h"
 #include "../private/SkGpuFenceSync.h"
@@ -28,6 +29,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+
+using namespace sk_gpu_test;
 
 /*
  * This is an experimental GPU only benchmarking program.  The initial implementation will only
@@ -144,14 +147,14 @@ struct GPUTarget {
     void setup() {
         fGL->makeCurrent();
         // Make sure we're done with whatever came before.
-        SK_GL(*fGL, Finish());
+        GR_GL_CALL(fGL->gl(), Finish());
     }
 
     SkCanvas* beginTiming(SkCanvas* canvas) { return canvas; }
 
     void endTiming(bool usePlatformSwapBuffers) {
         if (fGL) {
-            SK_GL(*fGL, Flush());
+            GR_GL_CALL(fGL->gl(), Flush());
             if (usePlatformSwapBuffers) {
                 fGL->swapBuffers();
             } else {
@@ -160,7 +163,7 @@ struct GPUTarget {
         }
     }
     void finish() {
-        SK_GL(*fGL, Finish());
+        GR_GL_CALL(fGL->gl(), Finish());
     }
 
     bool needsFrameTiming(int* maxFrameLag) const {
@@ -172,8 +175,8 @@ struct GPUTarget {
     }
 
     bool init(Benchmark* bench, GrContextFactory* factory, bool useDfText,
-              GrContextFactory::GLContextType ctxType,
-              GrContextFactory::GLContextOptions ctxOptions, int numSamples) {
+              GrContextFactory::ContextType ctxType,
+              GrContextFactory::ContextOptions ctxOptions, int numSamples) {
         GrContext* context = factory->get(ctxType, ctxOptions);
         int maxRTSize = context->caps()->maxRenderTargetSize();
         SkImageInfo info = SkImageInfo::Make(SkTMin(bench->getSize().fX, maxRTSize),
@@ -215,10 +218,10 @@ struct GPUTarget {
         return true;
     }
 
-    SkGLContext* gl() { return fGL; }
+    GLTestContext* gl() { return fGL; }
 
 private:
-    SkGLContext* fGL;
+    GLTestContext* fGL;
     SkAutoTDelete<SkSurface> fSurface;
 };
 
@@ -279,7 +282,7 @@ static int clamp_loops(int loops) {
 static double now_ms() { return SkTime::GetNSecs() * 1e-6; }
 
 struct TimingThread {
-    TimingThread(SkGLContext* mainContext)
+    TimingThread(GLTestContext* mainContext)
         : fFenceSync(mainContext->fenceSync())
         ,  fMainContext(mainContext)
         ,  fDone(false) {}
@@ -305,8 +308,8 @@ struct TimingThread {
 
     void timingLoop() {
         // Create a context which shares display lists with the main thread
-        SkAutoTDelete<SkGLContext> glContext(SkCreatePlatformGLContext(kNone_GrGLStandard,
-                                                                       fMainContext));
+        SkAutoTDelete<GLTestContext> glContext(CreatePlatformGLTestContext(kNone_GrGLStandard,
+                                                                           fMainContext));
         glContext->makeCurrent();
 
         // Basic timing methodology is:
@@ -402,7 +405,7 @@ private:
     SyncQueue fFrameEndSyncs;
     SkTArray<double> fTimings;
     SkMutex fDoneMutex;
-    SkGLContext* fMainContext;
+    GLTestContext* fMainContext;
     bool fDone;
 };
 
@@ -475,8 +478,8 @@ struct AutoSetupContextBenchAndTarget {
         fCtxFactory.reset(new GrContextFactory(grContextOpts));
 
         SkAssertResult(fTarget.init(bench, fCtxFactory, false,
-                                    GrContextFactory::kNative_GLContextType,
-                                    GrContextFactory::kNone_GLContextOptions, 0));
+                                    GrContextFactory::kNativeGL_ContextType,
+                                    GrContextFactory::kNone_ContextOptions, 0));
 
         fCanvas = fTarget.getCanvas();
         fTarget.setup();

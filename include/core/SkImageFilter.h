@@ -88,12 +88,16 @@ public:
 
         /**
          *  Apply this cropRect to the imageBounds. If a given edge of the cropRect is not
-         *  set, then the corresponding edge from imageBounds will be used.
+         *  set, then the corresponding edge from imageBounds will be used. If "embiggen"
+         *  is true, the crop rect is allowed to enlarge the size of the rect, otherwise
+         *  it may only reduce the rect. Filters that can affect transparent black should 
+         *  pass "true", while all other filters should pass "false".
          *
          *  Note: imageBounds is in "device" space, as the output cropped rectangle will be,
          *  so the matrix is ignored for those. It is only applied the croprect's bounds.
          */
-        void applyTo(const SkIRect& imageBounds, const SkMatrix&, SkIRect* cropped) const;
+        void applyTo(const SkIRect& imageBounds, const SkMatrix&, bool embiggen,
+                     SkIRect* cropped) const;
 
     private:
         SkRect fRect;
@@ -249,20 +253,34 @@ public:
     virtual SkRect computeFastBounds(const SkRect&) const;
 
     // Can this filter DAG compute the resulting bounds of an object-space rectangle?
-    virtual bool canComputeFastBounds() const;
+    bool canComputeFastBounds() const;
 
     /**
      *  If this filter can be represented by another filter + a localMatrix, return that filter,
      *  else return null.
      */
-    SkImageFilter* newWithLocalMatrix(const SkMatrix& matrix) const;
+    sk_sp<SkImageFilter> makeWithLocalMatrix(const SkMatrix&) const;
+
+#ifdef SK_SUPPORT_LEGACY_IMAGEFILTER_PTR
+    SkImageFilter* newWithLocalMatrix(const SkMatrix& matrix) const {
+        return this->makeWithLocalMatrix(matrix).release();
+    }
+#endif
 
     /**
      * Create an SkMatrixImageFilter, which transforms its input by the given matrix.
      */
+    static sk_sp<SkImageFilter> MakeMatrixFilter(const SkMatrix& matrix,
+                                                 SkFilterQuality,
+                                                 sk_sp<SkImageFilter> input);
+#ifdef SK_SUPPORT_LEGACY_IMAGEFILTER_PTR
     static SkImageFilter* CreateMatrixFilter(const SkMatrix& matrix,
-                                             SkFilterQuality,
-                                             SkImageFilter* input = NULL);
+                                             SkFilterQuality filterQuality,
+                                             SkImageFilter* input = nullptr) {
+        return MakeMatrixFilter(matrix, filterQuality, sk_ref_sp<SkImageFilter>(input)).release();
+    }
+#endif
+
 
     sk_sp<SkSpecialImage> filterInput(int index,
                                       SkSpecialImage* src,
@@ -287,9 +305,6 @@ public:
 protected:
     class Common {
     public:
-        Common() {}
-        ~Common();
-
         /**
          *  Attempt to unflatten the cropRect and the expected number of input filters.
          *  If any number of input filters is valid, pass -1.
@@ -302,9 +317,9 @@ protected:
 
         const CropRect& cropRect() const { return fCropRect; }
         int             inputCount() const { return fInputs.count(); }
-        SkImageFilter** inputs() const { return fInputs.get(); }
+        sk_sp<SkImageFilter>* inputs() const { return fInputs.get(); }
 
-        SkImageFilter*  getInput(int index) const { return fInputs[index]; }
+        sk_sp<SkImageFilter>  getInput(int index) const { return fInputs[index]; }
 
         // If the caller wants a copy of the inputs, call this and it will transfer ownership
         // of the unflattened input filters to the caller. This is just a short-cut for copying
@@ -315,12 +330,14 @@ protected:
     private:
         CropRect fCropRect;
         // most filters accept at most 2 input-filters
-        SkAutoSTArray<2, SkImageFilter*> fInputs;
+        SkAutoSTArray<2, sk_sp<SkImageFilter>> fInputs;
 
         void allocInputs(int count);
     };
 
-    SkImageFilter(int inputCount, SkImageFilter** inputs, const CropRect* cropRect = NULL);
+    SkImageFilter(int inputCount, SkImageFilter** inputs, const CropRect* cropRect = nullptr);
+
+    SkImageFilter(sk_sp<SkImageFilter>* inputs, int inputCount, const CropRect* cropRect);
 
     virtual ~SkImageFilter();
 
@@ -461,6 +478,7 @@ private:
                                SkBitmap* result, SkIPoint* offset) const;
 
     bool usesSrcInput() const { return fUsesSrcInput; }
+    virtual bool affectsTransparentBlack() const { return false; }
 
     typedef SkFlattenable INHERITED;
     int fInputCount;

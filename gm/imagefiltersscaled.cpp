@@ -52,16 +52,16 @@ protected:
     void onDraw(SkCanvas* canvas) override {
         canvas->clear(SK_ColorBLACK);
 
-        SkAutoTUnref<SkImageFilter> gradient(SkImageSource::Create(fGradientCircle.get()));
-        SkAutoTUnref<SkImageFilter> checkerboard(SkImageSource::Create(fCheckerboard.get()));
+        sk_sp<SkImageFilter> gradient(SkImageSource::Make(fGradientCircle));
+        sk_sp<SkImageFilter> checkerboard(SkImageSource::Make(fCheckerboard));
         sk_sp<SkShader> noise(SkPerlinNoiseShader::MakeFractalNoise(
             SkDoubleToScalar(0.1), SkDoubleToScalar(0.05), 1, 0));
         SkPaint noisePaint;
         noisePaint.setShader(noise);
 
         SkPoint3 pointLocation = SkPoint3::Make(0, 0, SkIntToScalar(10));
-        SkPoint3 spotLocation = SkPoint3::Make(SkIntToScalar(-10), 
-                                               SkIntToScalar(-10), 
+        SkPoint3 spotLocation = SkPoint3::Make(SkIntToScalar(-10),
+                                               SkIntToScalar(-10),
                                                SkIntToScalar(20));
         SkPoint3 spotTarget = SkPoint3::Make(SkIntToScalar(40), SkIntToScalar(40), 0);
         SkScalar spotExponent = SK_Scalar1;
@@ -73,20 +73,20 @@ protected:
         resizeMatrix.setScale(RESIZE_FACTOR, RESIZE_FACTOR);
 
         SkImageFilter* filters[] = {
-            SkBlurImageFilter::Create(SkIntToScalar(4), SkIntToScalar(4)),
-            SkDropShadowImageFilter::Create(SkIntToScalar(5), SkIntToScalar(10),
+            SkBlurImageFilter::Make(SkIntToScalar(4), SkIntToScalar(4), nullptr).release(),
+            SkDropShadowImageFilter::Make(SkIntToScalar(5), SkIntToScalar(10),
                 SkIntToScalar(3), SkIntToScalar(3), SK_ColorYELLOW,
-                SkDropShadowImageFilter::kDrawShadowAndForeground_ShadowMode),
+                SkDropShadowImageFilter::kDrawShadowAndForeground_ShadowMode, nullptr).release(),
             SkDisplacementMapEffect::Create(SkDisplacementMapEffect::kR_ChannelSelectorType,
                                             SkDisplacementMapEffect::kR_ChannelSelectorType,
                                             SkIntToScalar(12),
                                             gradient.get(),
                                             checkerboard.get()),
-            SkDilateImageFilter::Create(1, 1, checkerboard.get()),
-            SkErodeImageFilter::Create(1, 1, checkerboard.get()),
-            SkOffsetImageFilter::Create(SkIntToScalar(32), 0),
-            SkImageFilter::CreateMatrixFilter(resizeMatrix, kNone_SkFilterQuality),
-            SkPaintImageFilter::Create(noisePaint),
+            SkDilateImageFilter::Make(1, 1, checkerboard).release(),
+            SkErodeImageFilter::Make(1, 1, checkerboard).release(),
+            SkOffsetImageFilter::Make(SkIntToScalar(32), 0, nullptr).release(),
+            SkImageFilter::MakeMatrixFilter(resizeMatrix, kNone_SkFilterQuality, nullptr).release(),
+            SkPaintImageFilter::Make(noisePaint).release(),
             SkLightingImageFilter::CreatePointLitDiffuse(pointLocation, white, surfaceScale, kd),
             SkLightingImageFilter::CreateSpotLitDiffuse(spotLocation, spotTarget, spotExponent,
                                                         cutoffAngle, white, surfaceScale, kd),

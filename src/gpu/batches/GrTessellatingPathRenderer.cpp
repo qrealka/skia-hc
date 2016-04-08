@@ -23,7 +23,7 @@
 
 /*
  * This path renderer tessellates the path into triangles using GrTessellator, uploads the triangles
- * to a vertex buffer, and renders them with a single draw call. It does not currently do 
+ * to a vertex buffer, and renders them with a single draw call. It does not currently do
  * antialiasing, so it must be used in conjunction with multisampling.
  */
 namespace {
@@ -69,7 +69,7 @@ public:
     SkPoint* lock(int vertexCount) override {
         size_t size = vertexCount * sizeof(SkPoint);
         fVertexBuffer.reset(fResourceProvider->createBuffer(
-            kVertex_GrBufferType, size, kStatic_GrAccessPattern, 0));
+            size, kVertex_GrBufferType, kStatic_GrAccessPattern, 0));
         if (!fVertexBuffer.get()) {
             return nullptr;
         }
@@ -124,7 +124,7 @@ public:
 
     const char* name() const override { return "TessellatingPathBatch"; }
 
-    void computePipelineOptimizations(GrInitInvariantOutput* color, 
+    void computePipelineOptimizations(GrInitInvariantOutput* color,
                                       GrInitInvariantOutput* coverage,
                                       GrBatchToXPOverrides* overrides) const override {
         color->setKnownFourComponents(fColor);
@@ -231,11 +231,9 @@ private:
 
         GrPrimitiveType primitiveType = TESSELLATOR_WIREFRAME ? kLines_GrPrimitiveType
                                                               : kTriangles_GrPrimitiveType;
-        target->initDraw(gp);
-
         GrMesh mesh;
         mesh.init(primitiveType, vb, firstVertex, count);
-        target->draw(mesh);
+        target->draw(gp, mesh);
     }
 
     bool onCombineIfPossible(GrBatch*, const GrCaps&) override { return false; }

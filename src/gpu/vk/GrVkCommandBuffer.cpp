@@ -63,7 +63,7 @@ void GrVkCommandBuffer::freeGPUData(const GrVkGpu* gpu) const {
     for (int i = 0; i < fTrackedResources.count(); ++i) {
         fTrackedResources[i]->unref(gpu);
     }
-    
+
     // Destroy the fence, if any
     if (VK_NULL_HANDLE != fSubmitFence) {
         GR_VK_CALL(gpu->vkInterface(), DestroyFence(gpu->device(), fSubmitFence, nullptr));
@@ -126,7 +126,7 @@ void GrVkCommandBuffer::endRenderPass(const GrVkGpu* gpu) {
 
 void GrVkCommandBuffer::submitToQueue(const GrVkGpu* gpu, VkQueue queue, GrVkGpu::SyncQueue sync) {
     SkASSERT(!fIsActive);
-    
+
     VkResult err;
     VkFenceCreateInfo fenceInfo;
     memset(&fenceInfo, 0, sizeof(VkFenceCreateInfo));
@@ -148,7 +148,7 @@ void GrVkCommandBuffer::submitToQueue(const GrVkGpu* gpu, VkQueue queue, GrVkGpu
     GR_VK_CALL_ERRCHECK(gpu->vkInterface(), QueueSubmit(queue, 1, &submitInfo, fSubmitFence));
 
     if (GrVkGpu::kForce_SyncQueue == sync) {
-        err = GR_VK_CALL(gpu->vkInterface(), 
+        err = GR_VK_CALL(gpu->vkInterface(),
                          WaitForFences(gpu->device(), 1, &fSubmitFence, true, UINT64_MAX));
         if (VK_TIMEOUT == err) {
             SkDebugf("Fence failed to signal: %d\n", err);
@@ -251,6 +251,28 @@ void GrVkCommandBuffer::copyImage(const GrVkGpu* gpu,
                                                 dstLayout,
                                                 copyRegionCount,
                                                 copyRegions));
+}
+
+void GrVkCommandBuffer::blitImage(const GrVkGpu* gpu,
+                                  GrVkImage* srcImage,
+                                  VkImageLayout srcLayout,
+                                  GrVkImage* dstImage,
+                                  VkImageLayout dstLayout,
+                                  uint32_t blitRegionCount,
+                                  const VkImageBlit* blitRegions,
+                                  VkFilter filter) {
+    SkASSERT(fIsActive);
+    SkASSERT(!fActiveRenderPass);
+    this->addResource(srcImage->resource());
+    this->addResource(dstImage->resource());
+    GR_VK_CALL(gpu->vkInterface(), CmdBlitImage(fCmdBuffer,
+                                                srcImage->textureImage(),
+                                                srcLayout,
+                                                dstImage->textureImage(),
+                                                dstLayout,
+                                                blitRegionCount,
+                                                blitRegions,
+                                                filter));
 }
 
 void GrVkCommandBuffer::copyImageToBuffer(const GrVkGpu* gpu,

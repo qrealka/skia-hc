@@ -61,11 +61,17 @@ public:
 
     GrPathRendering* pathRendering() { return fPathRendering.get();  }
 
-    // Called by GrContext when the underlying backend context has been destroyed.
-    // GrGpu should use this to ensure that no backend API calls will be made from
-    // here onward, including in its destructor. Subclasses should call
-    // INHERITED::contextAbandoned() if they override this.
-    virtual void contextAbandoned();
+    enum class DisconnectType {
+        // No cleanup should be attempted, immediately cease making backend API calls
+        kAbandon,
+        // Free allocated resources (not known by GrResourceCache) before returning and
+        // ensure no backend backend 3D API calls will be made after disconnect() returns.
+        kCleanup,
+    };
+
+    // Called by GrContext when the underlying backend context is already or will be destroyed
+    // before GrContext.
+    virtual void disconnect(DisconnectType);
 
     /**
      * The GrGpu object normally assumes that no outsider is setting state
@@ -124,15 +130,19 @@ public:
     /**
      * Implements GrTextureProvider::wrapBackendTextureAsRenderTarget
      */
-    GrRenderTarget* wrapBackendTextureAsRenderTarget(const GrBackendTextureDesc&, GrWrapOwnership);
+    GrRenderTarget* wrapBackendTextureAsRenderTarget(const GrBackendTextureDesc&);
 
     /**
      * Creates a buffer.
      *
+     * @param size            size of buffer to create.
+     * @param intendedType    hint to the graphics subsystem about what the buffer will be used for.
+     * @param accessPattern   hint to the graphics subsystem about how the data will be accessed.
+     *
      * @return the buffer if successful, otherwise nullptr.
      */
-    GrBuffer* createBuffer(GrBufferType, size_t size, GrAccessPattern);
-    
+    GrBuffer* createBuffer(size_t size, GrBufferType intendedType, GrAccessPattern accessPattern);
+
     /**
      * Resolves MSAA.
      */
@@ -357,7 +367,7 @@ public:
               const GrMesh*,
               int meshCount);
 
-    // Called by drawtarget when flushing. 
+    // Called by drawtarget when flushing.
     // Provides a hook for post-flush actions (e.g. PLS reset and Vulkan command buffer submits).
     virtual void finishDrawTarget() {}
 
@@ -526,9 +536,8 @@ private:
     virtual GrTexture* onWrapBackendTexture(const GrBackendTextureDesc&, GrWrapOwnership) = 0;
     virtual GrRenderTarget* onWrapBackendRenderTarget(const GrBackendRenderTargetDesc&,
                                                       GrWrapOwnership) = 0;
-    virtual GrRenderTarget* onWrapBackendTextureAsRenderTarget(const GrBackendTextureDesc&,
-                                                               GrWrapOwnership) = 0;
-    virtual GrBuffer* onCreateBuffer(GrBufferType, size_t size, GrAccessPattern) = 0;
+    virtual GrRenderTarget* onWrapBackendTextureAsRenderTarget(const GrBackendTextureDesc&) = 0;
+    virtual GrBuffer* onCreateBuffer(size_t size, GrBufferType intendedType, GrAccessPattern) = 0;
 
     // overridden by backend-specific derived class to perform the clear.
     virtual void onClear(GrRenderTarget*, const SkIRect& rect, GrColor color) = 0;

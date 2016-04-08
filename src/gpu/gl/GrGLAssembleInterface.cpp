@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2014 Google Inc.
  *
@@ -7,7 +6,7 @@
  */
 
 
-#include "GrGLAssembleInterface.h"
+#include "gl/GrGLAssembleInterface.h"
 #include "GrGLUtil.h"
 
 #define GET_PROC(F) functions->f ## F = (GrGL ## F ## Proc) get(ctx, "gl" #F)

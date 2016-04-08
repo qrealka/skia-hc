@@ -15,47 +15,39 @@
 #include "SkWriteBuffer.h"
 #include "SkString.h"
 
-SkImageFilter* SkImageSource::Create(SkImage* image) {
-    return image ? new SkImageSource(image) : nullptr;
-}
 
-SkImageFilter* SkImageSource::Create(SkImage* image,
-                                     const SkRect& srcRect,
-                                     const SkRect& dstRect,
-                                     SkFilterQuality filterQuality) {
-    return image ? new SkImageSource(image, srcRect, dstRect, filterQuality) : nullptr;
-}
-
-SkImageSource::SkImageSource(SkImage* image)
+SkImageSource::SkImageSource(sk_sp<SkImage> image)
     : INHERITED(0, nullptr)
-    , fImage(SkRef(image))
-    , fSrcRect(SkRect::MakeIWH(image->width(), image->height()))
+    , fImage(std::move(image))
+    , fSrcRect(SkRect::MakeIWH(fImage->width(), fImage->height()))
     , fDstRect(fSrcRect)
-    , fFilterQuality(kHigh_SkFilterQuality) { }
+    , fFilterQuality(kHigh_SkFilterQuality) {
+}
 
-SkImageSource::SkImageSource(SkImage* image,
+SkImageSource::SkImageSource(sk_sp<SkImage> image,
                              const SkRect& srcRect,
                              const SkRect& dstRect,
                              SkFilterQuality filterQuality)
     : INHERITED(0, nullptr)
-    , fImage(SkRef(image))
+    , fImage(std::move(image))
     , fSrcRect(srcRect)
     , fDstRect(dstRect)
-    , fFilterQuality(filterQuality) { }
+    , fFilterQuality(filterQuality) {
+}
 
-SkFlattenable* SkImageSource::CreateProc(SkReadBuffer& buffer) {
+sk_sp<SkFlattenable> SkImageSource::CreateProc(SkReadBuffer& buffer) {
     SkFilterQuality filterQuality = (SkFilterQuality)buffer.readInt();
 
     SkRect src, dst;
     buffer.readRect(&src);
     buffer.readRect(&dst);
 
-    SkAutoTUnref<SkImage> image(buffer.readImage());
+    sk_sp<SkImage> image(buffer.readImage());
     if (!image) {
         return nullptr;
     }
 
-    return SkImageSource::Create(image, src, dst, filterQuality);
+    return SkImageSource::Make(std::move(image), src, dst, filterQuality);
 }
 
 void SkImageSource::flatten(SkWriteBuffer& buffer) const {
@@ -76,11 +68,13 @@ sk_sp<SkSpecialImage> SkImageSource::onFilterImage(SkSpecialImage* source, const
         offset->fX = offset->fY = 0;
         return SkSpecialImage::MakeFromImage(source->internal_getProxy(),
                                              SkIRect::MakeWH(fImage->width(), fImage->height()),
-                                             fImage);
+                                             fImage,
+                                             &source->props());
     }
 
     const SkIRect dstIRect = dstRect.roundOut();
 
+    // SRGBTODO: Propagate SkColorType?
     const SkImageInfo info = SkImageInfo::MakeN32(dstIRect.width(), dstIRect.height(),
                                                   kPremul_SkAlphaType);
 

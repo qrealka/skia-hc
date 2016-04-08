@@ -34,7 +34,28 @@ def get_args(bot):
   if '-x86-' in bot and not 'NexusPlayer' in bot:
     args.extend('--threads 4'.split(' '))
 
-  configs = ['565', '8888', 'gpu']
+  # These are the canonical configs that we would ideally run on all bots. We
+  # may opt out or substitute some below for specific bots
+  configs = ['565', '8888', 'gpu', 'gpusrgb', 'pdf']
+  # Add in either msaa4 or msaa16 to the canonical set of configs to run
+  if 'Android' in bot or 'iOS' in bot:
+    configs.append('msaa4')
+  else:
+    configs.append('msaa16')
+
+  # With msaa, the S4 crashes and the NP produces a long error stream when we
+  # run with MSAA. The Tegra2 and Tegra3 just don't support it. No record of
+  # why we're not running msaa on iOS, probably started with gpu config and just
+  # haven't tried.
+  if ('GalaxyS4'    in bot or
+      'NexusPlayer' in bot or
+      'Tegra3'      in bot or
+      'iOS'         in bot):
+    configs = [x for x in configs if 'msaa' not in x]
+
+  # Runs out of memory on Android bots and Daisy.  Everyone else seems fine.
+  if 'Android' in bot or 'Daisy' in bot:
+    configs.remove('pdf')
 
   if '-GCE-' in bot:
     configs.extend(['f16', 'srgb'])              # Gamma-correct formats.
@@ -46,24 +67,14 @@ def get_args(bot):
         'GTX660'   in bot or
         'GT610'    in bot):
       if 'Android' in bot:
-        configs.append('nvprmsaa4')
+        configs.append('nvprdit4')
       else:
-        configs.append('nvprmsaa16')
+        configs.append('nvprdit16')
 
-  # The S4 crashes and the NP produces a long error stream when we run with
-  # MSAA.  The Tegra2 and Tegra3 just don't support it.
-  if ('GalaxyS4'    not in bot and
-      'NexusPlayer' not in bot and
-      'Tegra3'      not in bot and
-      'iOS'         not in bot):
-    if 'Android' in bot:
-      configs.append('msaa4')
-    else:
-      configs.append('msaa16')
-  # Runs out of memory on Android bots and Daisy.  Everyone else seems fine.
-  if 'Android' not in bot and 'Daisy' not in bot:
-    configs.append('pdf')
-    configs.append('pdf_poppler')
+  # We want to test the OpenGL config not the GLES config on the X1
+  if 'TegraX1' in bot:
+    configs = [x.replace('gpu', 'gl') for x in configs]
+    configs = [x.replace('msaa', 'glmsaa') for x in configs]
 
   # NP is running out of RAM when we run all these modes.  skia:3255
   if 'NexusPlayer' not in bot:
@@ -93,6 +104,7 @@ def get_args(bot):
   blacklist.extend('f16 _ _ dstreadshuffle'.split(' '))
   blacklist.extend('f16 image _ _'.split(' '))
   blacklist.extend('srgb image _ _'.split(' '))
+  blacklist.extend('gpusrgb image _ _'.split(' '))
 
   # Certain gm's on win7 gpu and pdf are never finishing and keeping the test
   # running forever
@@ -145,7 +157,6 @@ def get_args(bot):
                'bleed_image',
                'bleed_alpha_image',
                'bleed_alpha_image_shader',
-               'blend',
                'c_gms',
                'colortype',
                'colortype_xfermodes',
@@ -157,22 +168,14 @@ def get_args(bot):
                'fontmgr_match',
                'fontmgr_iter',
                'lightingshader',
-               'localmatriximagefilter',
-               'path_stroke_with_zero_length',
-               'textblobgeometrychange',
                'verylargebitmap',              # Windows only.
                'verylarge_picture_image']:     # Windows only.
     blacklist.extend(['serialize-8888', 'gm', '_', test])
   # skia:4769
-  for test in ['blend',
-               'drawfilter',
-               'path_stroke_with_zero_length',
-               'textblobgeometrychange']:
+  for test in ['drawfilter']:
     blacklist.extend([    'sp-8888', 'gm', '_', test])
     blacklist.extend([   'pic-8888', 'gm', '_', test])
     blacklist.extend(['2ndpic-8888', 'gm', '_', test])
-  for test in ['patch_primitive']:
-    blacklist.extend(['sp-8888', 'gm', '_', test])
   # skia:4703
   for test in ['image-cacherator-from-picture',
                'image-cacherator-from-raster',
@@ -261,6 +264,7 @@ def self_test():
     'Test-Win7-MSVC-ShuttleA-GPU-HD2000-x86-Debug-ANGLE',
     'Test-Mac10.8-Clang-MacMini4.1-CPU-SSE4-x86_64-Release',
     'Test-Mac-Clang-MacMini4.1-GPU-GeForce320M-x86_64-Release',
+    'Test-Android-GCC-NVIDIA_Shield-GPU-TegraX1-Arm64-Release',
   ]
 
   cov = coverage.coverage()

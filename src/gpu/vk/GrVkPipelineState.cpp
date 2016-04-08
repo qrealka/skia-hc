@@ -37,6 +37,8 @@ GrVkPipelineState::GrVkPipelineState(GrVkGpu* gpu,
                                      const GrGLSLFragProcs& fragmentProcessors)
     : fPipeline(pipeline)
     , fPipelineLayout(layout)
+    , fStartDS(SK_MaxS32)
+    , fDSCount(0)
     , fBuiltinUniformHandles(builtinUniformHandles)
     , fGeometryProcessor(geometryProcessor)
     , fXferProcessor(xferProcessor)
@@ -46,7 +48,8 @@ GrVkPipelineState::GrVkPipelineState(GrVkGpu* gpu,
     , fSamplerPoolManager(dsLayout[GrVkUniformHandler::kSamplerDescSet],
                           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, numSamplers, gpu)
     , fUniformPoolManager(dsLayout[GrVkUniformHandler::kUniformBufferDescSet],
-                          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, gpu) {
+                          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                          (vertexUniformSize || fragmentUniformSize) ? 2 : 0, gpu) {
     fSamplers.setReserve(numSamplers);
     fTextureViews.setReserve(numSamplers);
     fTextures.setReserve(numSamplers);
@@ -55,8 +58,10 @@ GrVkPipelineState::GrVkPipelineState(GrVkGpu* gpu,
     fDescriptorSets[1] = VK_NULL_HANDLE;
 
     // Currently we are always binding a descriptor set for uniform buffers.
-    fStartDS = GrVkUniformHandler::kUniformBufferDescSet;
-    fDSCount = 1;
+    if (vertexUniformSize || fragmentUniformSize) {
+        fDSCount++;
+        fStartDS = GrVkUniformHandler::kUniformBufferDescSet;
+    }
     if (numSamplers) {
         fDSCount++;
         fStartDS = SkTMin(fStartDS, (int)GrVkUniformHandler::kSamplerDescSet);
@@ -75,6 +80,9 @@ GrVkPipelineState::~GrVkPipelineState() {
     SkASSERT(!fSamplers.count());
     SkASSERT(!fTextureViews.count());
     SkASSERT(!fTextures.count());
+    for (int i = 0; i < fFragmentProcessors.count(); ++i) {
+        delete fFragmentProcessors[i];
+    }
 }
 
 void GrVkPipelineState::freeTempResources(const GrVkGpu* gpu) {
@@ -189,13 +197,15 @@ void GrVkPipelineState::setData(GrVkGpu* gpu,
     if (fNumSamplers) {
         fSamplerPoolManager.getNewDescriptorSet(gpu,
                                              &fDescriptorSets[GrVkUniformHandler::kSamplerDescSet]);
+        this->writeSamplers(gpu, textureBindings);
     }
-    fUniformPoolManager.getNewDescriptorSet(gpu,
+
+
+    if (fVertexUniformBuffer.get() || fFragmentUniformBuffer.get()) {
+        fUniformPoolManager.getNewDescriptorSet(gpu,
                                        &fDescriptorSets[GrVkUniformHandler::kUniformBufferDescSet]);
-
-    this->writeUniformBuffers(gpu);
-
-    this->writeSamplers(gpu, textureBindings);
+        this->writeUniformBuffers(gpu);
+    }
 }
 
 void GrVkPipelineState::writeUniformBuffers(const GrVkGpu* gpu) {
@@ -218,7 +228,7 @@ void GrVkPipelineState::writeUniformBuffers(const GrVkGpu* gpu) {
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].pNext = nullptr;
-        descriptorWrites[0].dstSet = fDescriptorSets[1];
+        descriptorWrites[0].dstSet = fDescriptorSets[GrVkUniformHandler::kUniformBufferDescSet];
         descriptorWrites[0].dstBinding = GrVkUniformHandler::kVertexBinding;
         descriptorWrites[0].dstArrayElement = 0;
         descriptorWrites[0].descriptorCount = 1;
@@ -249,7 +259,7 @@ void GrVkPipelineState::writeUniformBuffers(const GrVkGpu* gpu) {
 
         descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[1].pNext = nullptr;
-        descriptorWrites[1].dstSet = fDescriptorSets[1];
+        descriptorWrites[1].dstSet = fDescriptorSets[GrVkUniformHandler::kUniformBufferDescSet];
         descriptorWrites[1].dstBinding = GrVkUniformHandler::kFragBinding;;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorCount = 1;
@@ -399,7 +409,11 @@ void GrVkPipelineState::DescriptorPoolManager::getNewPool(GrVkGpu* gpu) {
     if (fPool) {
         fPool->unref(gpu);
         SkASSERT(fMaxDescriptorSets < (SK_MaxU32 >> 1));
-        fMaxDescriptorSets = fMaxDescriptorSets << 1;
+        if (fMaxDescriptorSets < kMaxDescSetLimit >> 1) {
+            fMaxDescriptorSets = fMaxDescriptorSets << 1;
+        } else {
+            fMaxDescriptorSets = kMaxDescSetLimit;
+        }
 
     }
     if (fMaxDescriptorSets) {
@@ -489,7 +503,7 @@ void GrVkPipelineState::BuildStateKey(const GrPipeline& pipeline, GrPrimitiveTyp
 
     b.add32(primitiveType);
 
-    // Set key length 
+    // Set key length
     int keyLength = key->count();
     SkASSERT(0 == (keyLength % 4));
     *reinterpret_cast<uint32_t*>(key->begin()) = SkToU32(keyLength);

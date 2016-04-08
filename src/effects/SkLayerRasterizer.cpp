@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2006 The Android Open Source Project
  *
@@ -145,8 +144,8 @@ bool SkLayerRasterizer::onRasterize(const SkPath& path, const SkMatrix& matrix,
     return true;
 }
 
-SkFlattenable* SkLayerRasterizer::CreateProc(SkReadBuffer& buffer) {
-    return new SkLayerRasterizer(ReadLayers(buffer));
+sk_sp<SkFlattenable> SkLayerRasterizer::CreateProc(SkReadBuffer& buffer) {
+    return sk_sp<SkFlattenable>(new SkLayerRasterizer(ReadLayers(buffer)));
 }
 
 SkDeque* SkLayerRasterizer::ReadLayers(SkReadBuffer& buffer) {

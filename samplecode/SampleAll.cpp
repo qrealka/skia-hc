@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2011 Google Inc.
  *
@@ -78,9 +77,9 @@ private:
 ///////////////////////////////////////////////////////////
 
 static void r0(SkLayerRasterizer::Builder* rastBuilder, SkPaint& p) {
-    p.setMaskFilter(SkBlurMaskFilter::Create(kNormal_SkBlurStyle,
-                                             SkBlurMask::ConvertRadiusToSigma(SkIntToScalar(3)),
-                                             SkBlurMaskFilter::kNone_BlurFlag))->unref();
+    p.setMaskFilter(SkBlurMaskFilter::Make(kNormal_SkBlurStyle,
+                                           SkBlurMask::ConvertRadiusToSigma(SkIntToScalar(3)),
+                                           SkBlurMaskFilter::kNone_BlurFlag));
     rastBuilder->addLayer(p, SkIntToScalar(3), SkIntToScalar(3));
 
     p.setMaskFilter(nullptr);
@@ -251,9 +250,9 @@ static void apply_shader(SkPaint* paint, int index) {
 
 #if 1
     SkScalar dir[] = { SK_Scalar1, SK_Scalar1, SK_Scalar1 };
-    paint->setMaskFilter(SkBlurMaskFilter::CreateEmboss(
+    paint->setMaskFilter(SkBlurMaskFilter::MakeEmboss(
                 SkBlurMask::ConvertRadiusToSigma(SkIntToScalar(3)), dir,
-                SK_Scalar1/4, SkIntToScalar(4)))->unref();
+                SK_Scalar1/4, SkIntToScalar(4)));
     paint->setColor(SK_ColorBLUE);
 #endif
 }
@@ -380,10 +379,7 @@ protected:
         light.fDirection[2] = SK_Scalar1/3;
         light.fAmbient        = 0x48;
         light.fSpecular        = 0x80;
-        SkScalar sigma = SkBlurMask::ConvertRadiusToSigma(SkIntToScalar(12)/5);
-        SkMaskFilter* embossFilter = SkEmbossMaskFilter::Create(sigma, light);
 
-        SkXfermode* xfermode = SkXfermode::Create(SkXfermode::kXor_Mode);
         auto lightingFilter = SkColorMatrixFilter::MakeLightingFilter(
             0xff89bc45, 0xff112233);
 
@@ -405,7 +401,7 @@ protected:
         paint.setColor(SK_ColorGREEN);
         paint.setStrokeWidth(SkIntToScalar(10));
         paint.setStyle(SkPaint::kStroke_Style);
-        paint.setXfermode(xfermode)->unref();
+        paint.setXfermode(SkXfermode::Make(SkXfermode::kXor_Mode));
         paint.setColorFilter(lightingFilter);
         canvas->drawLine(start.fX, start.fY, stop.fX, stop.fY, paint); // should not be green
         paint.setXfermode(nullptr);
@@ -422,7 +418,8 @@ protected:
 
         // circle w/ emboss & transparent (exercises 3dshader)
         canvas->translate(SkIntToScalar(50), 0);
-        paint.setMaskFilter(embossFilter)->unref();
+        paint.setMaskFilter(SkEmbossMaskFilter::Make(
+                                     SkBlurMask::ConvertRadiusToSigma(SkIntToScalar(12)/5), light));
         canvas->drawOval(rect, paint);
         canvas->translate(SkIntToScalar(10), SkIntToScalar(10));
 //        paint.setShader(transparentShader)->unref();
@@ -506,8 +503,8 @@ protected:
         SkColor colors2[] = {SK_ColorBLACK,  SkColorSetARGB(0x80, 0, 0, 0)};
         auto shaderB = SkGradientShader::MakeLinear(pts, colors2, nullptr,
             2, SkShader::kClamp_TileMode);
-        SkAutoTUnref<SkXfermode> mode(SkXfermode::Create(SkXfermode::kDstIn_Mode));
-        return SkShader::MakeComposeShader(shaderA, shaderB, mode);
+        return SkShader::MakeComposeShader(std::move(shaderA), std::move(shaderB),
+                                           SkXfermode::Make(SkXfermode::kDstIn_Mode));
     }
 
     virtual void startTest() {

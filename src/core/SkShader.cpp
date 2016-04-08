@@ -264,8 +264,8 @@ bool SkColorShader::isOpaque() const {
     return SkColorGetA(fColor) == 255;
 }
 
-SkFlattenable* SkColorShader::CreateProc(SkReadBuffer& buffer) {
-    return new SkColorShader(buffer.readColor());
+sk_sp<SkFlattenable> SkColorShader::CreateProc(SkReadBuffer& buffer) {
+    return sk_make_sp<SkColorShader>(buffer.readColor());
 }
 
 void SkColorShader::flatten(SkWriteBuffer& buffer) const {
@@ -419,8 +419,8 @@ bool SkColorShader::ColorShaderContext::onChooseBlitProcs(const SkImageInfo& inf
 
 ///////////////////////////////////////////////////////////////////////////////
 
-SkFlattenable* SkEmptyShader::CreateProc(SkReadBuffer&) {
-    return SkShader::MakeEmptyShader().release();
+sk_sp<SkFlattenable> SkEmptyShader::CreateProc(SkReadBuffer&) {
+    return SkShader::MakeEmptyShader();
 }
 
 #ifndef SK_IGNORE_TO_STRING
@@ -451,5 +451,13 @@ SkShader* SkShader::CreatePictureShader(const SkPicture* src, TileMode tmx, Tile
 }
 SkShader* SkShader::newWithColorFilter(SkColorFilter* filter) const {
     return this->makeWithColorFilter(sk_ref_sp(filter)).release();
+}
+#endif
+
+#ifdef SK_SUPPORT_LEGACY_XFERMODE_PTR
+#include "SkXfermode.h"
+sk_sp<SkShader> SkShader::MakeComposeShader(sk_sp<SkShader> dst, sk_sp<SkShader> src,
+                                            SkXfermode* xfer) {
+    return MakeComposeShader(std::move(dst), std::move(src), sk_ref_sp(xfer));
 }
 #endif

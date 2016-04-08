@@ -54,7 +54,7 @@ public:
 
     const char* name() const override { return "GrStrokeRectBatch"; }
 
-    void computePipelineOptimizations(GrInitInvariantOutput* color, 
+    void computePipelineOptimizations(GrInitInvariantOutput* color,
                                       GrInitInvariantOutput* coverage,
                                       GrBatchToXPOverrides* overrides) const override {
         // When this is called on a batch, there is only one geometry bundle
@@ -117,8 +117,6 @@ private:
                                                      this->viewMatrix()));
         }
 
-        target->initDraw(gp);
-
         size_t vertexStride = gp->getVertexStride();
 
         SkASSERT(vertexStride == sizeof(GrDefaultGeoProcFactory::PositionAttr));
@@ -159,7 +157,7 @@ private:
 
         GrMesh mesh;
         mesh.init(primType, vertexBuffer, firstVertex, vertexCount);
-        target->draw(mesh);
+        target->draw(gp, mesh);
     }
 
     void initBatchTracker(const GrXPOverridesForBatch& overrides) override {

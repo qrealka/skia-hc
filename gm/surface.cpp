@@ -22,13 +22,16 @@ static sk_sp<SkShader> make_shader() {
 }
 
 static sk_sp<SkSurface> make_surface(GrContext* ctx, const SkImageInfo& info, SkPixelGeometry geo,
-                                     int disallowAA, int disallowDither) {
+                                     int disallowAA, int disallowDither, bool allowSRGBInputs) {
     uint32_t flags = 0;
     if (disallowAA) {
         flags |= SkSurfaceProps::kDisallowAntiAlias_Flag;
     }
     if (disallowDither) {
         flags |= SkSurfaceProps::kDisallowDither_Flag;
+    }
+    if (allowSRGBInputs) {
+        flags |= SkSurfaceProps::kAllowSRGBInputs_Flag;
     }
 
     SkSurfaceProps props(flags, geo);
@@ -74,7 +77,10 @@ protected:
         GrContext* ctx = canvas->getGrContext();
 
         // must be opaque to have a hope of testing LCD text
-        const SkImageInfo info = SkImageInfo::MakeN32(W, H, kOpaque_SkAlphaType);
+        const SkImageInfo info = SkImageInfo::MakeN32(W, H, kOpaque_SkAlphaType,
+                                                      canvas->imageInfo().profileType());
+        SkSurfaceProps canvasProps(SkSurfaceProps::kLegacyFontHost_InitType);
+        bool allowSRGBInputs = canvas->getProps(&canvasProps) && canvasProps.allowSRGBInputs();
 
         const struct {
             SkPixelGeometry fGeo;
@@ -86,13 +92,14 @@ protected:
             { kRGB_V_SkPixelGeometry,   "RGB_V" },
             { kBGR_V_SkPixelGeometry,   "BGR_V" },
         };
-    
+
         SkScalar x = 0;
         for (int disallowAA = 0; disallowAA <= 1; ++disallowAA) {
             for (int disallowDither = 0; disallowDither <= 1; ++disallowDither) {
                 SkScalar y = 0;
                 for (size_t i = 0; i < SK_ARRAY_COUNT(rec); ++i) {
-                    auto surface(make_surface(ctx, info, rec[i].fGeo, disallowAA, disallowDither));
+                    auto surface(make_surface(ctx, info, rec[i].fGeo, disallowAA, disallowDither,
+                                              allowSRGBInputs));
                     test_draw(surface->getCanvas(), rec[i].fLabel);
                     surface->draw(canvas, x, y, nullptr);
                     y += H;
@@ -156,4 +163,3 @@ private:
     typedef GM INHERITED;
 };
 DEF_GM( return new NewSurfaceGM )
-

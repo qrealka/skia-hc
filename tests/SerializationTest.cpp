@@ -243,16 +243,17 @@ static void TestBitmapSerialization(const SkBitmap& validBitmap,
                                     bool shouldSucceed,
                                     skiatest::Reporter* reporter) {
     sk_sp<SkImage> validImage(SkImage::MakeFromBitmap(validBitmap));
-    SkAutoTUnref<SkImageFilter> validBitmapSource(SkImageSource::Create(validImage.get()));
+    sk_sp<SkImageFilter> validBitmapSource(SkImageSource::Make(std::move(validImage)));
     sk_sp<SkImage> invalidImage(SkImage::MakeFromBitmap(invalidBitmap));
-    SkAutoTUnref<SkImageFilter> invalidBitmapSource(SkImageSource::Create(invalidImage.get()));
-    SkAutoTUnref<SkXfermode> mode(SkXfermode::Create(SkXfermode::kSrcOver_Mode));
-    SkAutoTUnref<SkImageFilter> xfermodeImageFilter(
-        SkXfermodeImageFilter::Create(mode, invalidBitmapSource, validBitmapSource));
+    sk_sp<SkImageFilter> invalidBitmapSource(SkImageSource::Make(std::move(invalidImage)));
+    sk_sp<SkImageFilter> xfermodeImageFilter(
+        SkXfermodeImageFilter::Make(SkXfermode::Make(SkXfermode::kSrcOver_Mode),
+                                    std::move(invalidBitmapSource),
+                                    std::move(validBitmapSource), nullptr));
 
     SkAutoTUnref<SkImageFilter> deserializedFilter(
         TestFlattenableSerialization<SkImageFilter>(
-            xfermodeImageFilter, shouldSucceed, reporter));
+            xfermodeImageFilter.get(), shouldSucceed, reporter));
 
     // Try to render a small bitmap using the invalid deserialized filter
     // to make sure we don't crash while trying to render it
@@ -274,8 +275,8 @@ static void TestXfermodeSerialization(skiatest::Reporter* reporter) {
             // skip SrcOver, as it is allowed to return nullptr from Create()
             continue;
         }
-        SkAutoTUnref<SkXfermode> mode(SkXfermode::Create(static_cast<SkXfermode::Mode>(i)));
-        REPORTER_ASSERT(reporter, mode.get());
+        auto mode(SkXfermode::Make(static_cast<SkXfermode::Mode>(i)));
+        REPORTER_ASSERT(reporter, mode);
         SkAutoTUnref<SkXfermode> copy(
             TestFlattenableSerialization<SkXfermode>(mode.get(), true, reporter));
     }
@@ -293,7 +294,7 @@ static void TestColorFilterSerialization(skiatest::Reporter* reporter) {
 
 static SkBitmap draw_picture(SkPicture& picture) {
      SkBitmap bitmap;
-     bitmap.allocN32Pixels(SkScalarCeilToInt(picture.cullRect().width()), 
+     bitmap.allocN32Pixels(SkScalarCeilToInt(picture.cullRect().width()),
                            SkScalarCeilToInt(picture.cullRect().height()));
      SkCanvas canvas(bitmap);
      picture.playback(&canvas);
@@ -333,8 +334,8 @@ static void serialize_and_compare_typeface(SkTypeface* typeface, const char* tex
     // Paint some text.
     SkPictureRecorder recorder;
     SkIRect canvasRect = SkIRect::MakeWH(kBitmapSize, kBitmapSize);
-    SkCanvas* canvas = recorder.beginRecording(SkIntToScalar(canvasRect.width()), 
-                                               SkIntToScalar(canvasRect.height()), 
+    SkCanvas* canvas = recorder.beginRecording(SkIntToScalar(canvasRect.width()),
+                                               SkIntToScalar(canvasRect.height()),
                                                nullptr, 0);
     canvas->drawColor(SK_ColorWHITE);
     canvas->drawText(text, 2, 24, 32, paint);
@@ -599,17 +600,17 @@ protected:
 DEF_TEST(Annotations, reporter) {
     SkPictureRecorder recorder;
     SkCanvas* recordingCanvas = recorder.beginRecording(SkRect::MakeWH(100, 100));
-    
+
     const char* str0 = "rect-with-url";
     const SkRect r0 = SkRect::MakeWH(10, 10);
     SkAutoTUnref<SkData> d0(SkData::NewWithCString(str0));
     SkAnnotateRectWithURL(recordingCanvas, r0, d0);
-    
+
     const char* str1 = "named-destination";
     const SkRect r1 = SkRect::MakeXYWH(5, 5, 0, 0); // collapsed to a point
     SkAutoTUnref<SkData> d1(SkData::NewWithCString(str1));
     SkAnnotateNamedDestination(recordingCanvas, {r1.x(), r1.y()}, d1);
-    
+
     const char* str2 = "link-to-destination";
     const SkRect r2 = SkRect::MakeXYWH(20, 20, 5, 6);
     SkAutoTUnref<SkData> d2(SkData::NewWithCString(str2));
@@ -627,4 +628,3 @@ DEF_TEST(Annotations, reporter) {
     TestAnnotationCanvas canvas(reporter, recs, SK_ARRAY_COUNT(recs));
     canvas.drawPicture(pict1);
 }
-
