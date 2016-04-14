@@ -89,12 +89,13 @@ SkPdfNativeDoc::SkPdfNativeDoc(const char* path)
         , fRootCatalogRef(NULL)
         , fRootCatalog(NULL) {
     gDoc = this;
-    FILE* file = fopen(path, "r");
+    FILE* file = fopen(path, "rb");
     // TODO(edisonn): put this in a function that can return NULL
     if (file) {
         size_t size = getFileSize(path);
         void* content = sk_malloc_throw(size);
-        bool ok = (0 != fread(content, size, 1, file));
+		const auto cnt = fread(content, sizeof(char), size, file);
+		bool ok = (cnt >= size);
         fclose(file);
         if (!ok) {
             sk_free(content);
@@ -112,7 +113,7 @@ SkPdfNativeDoc::SkPdfNativeDoc(const char* path)
 void SkPdfNativeDoc::init(const void* bytes, size_t length) {
     fFileContent = (const unsigned char*)bytes;
     fContentLength = length;
-    const unsigned char* eofLine = lineHome(fFileContent, fFileContent + fContentLength - 1);
+    const unsigned char* eofLine = lineHome(fFileContent, fFileContent + fContentLength - 2);
     const unsigned char* xrefByteOffsetLine = previousLineHome(fFileContent, eofLine);
     const unsigned char* xrefstartKeywordLine = previousLineHome(fFileContent, xrefByteOffsetLine);
 

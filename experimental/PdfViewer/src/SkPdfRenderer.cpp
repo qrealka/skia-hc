@@ -2917,8 +2917,8 @@ bool SkPDFNativeRenderToBitmap(SkStream* stream,
                                SkPdfContent unused,
                                double dpi) {
     SkASSERT(page >= 0);
-    SkPdfRenderer* renderer = SkPdfRenderer::CreateFromStream(stream);
-    if (NULL == renderer) {
+	SkAutoTDelete<SkPdfRenderer> renderer = SkPdfRenderer::CreateFromStream(stream);
+    if (renderer == nullptr) {
         return false;
     }
 

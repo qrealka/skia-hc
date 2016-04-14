@@ -435,7 +435,8 @@ target_link_libraries(example skia ${OPENGL_LIBRARIES})
 # Now build a experimental app
 file (GLOB_RECURSE pdfView ../experimental/PdfViewer/*.cpp)
 
-add_executable(pdf2bmp ${pdfView}
+
+add_executable(pdf2bmp ${pdfView} 
     ../src/core/SkOpts.cpp
     ../src/opts/SkOpts_ssse3.cpp
     ../src/opts/SkOpts_sse41.cpp
