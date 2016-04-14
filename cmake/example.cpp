@@ -87,7 +87,7 @@ int main(int, char**) {
     // This code is no longer Skia-specific.  We just dump the .png to disk.  Any way works.
     static const char* path = "example.png";
     std::ofstream(path, std::ios::out | std::ios::binary)
-        .write((const char*)png->data(), png->size());
+        .write(static_cast<const char*>(png->data()), png->size());
     std::cout << "Wrote " << path << std::endl;
 
     return 0;

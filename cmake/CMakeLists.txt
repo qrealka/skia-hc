@@ -3,6 +3,8 @@ cmake_minimum_required (VERSION 3.1 FATAL_ERROR)   # First version with CMAKE_CX
 project (skimake CXX)
 set (CMAKE_CXX_STANDARD 11)
 
+link_directories(${CMAKE_CURRENT_BINARY_DIR}/lib)
+
 # Default to Release mode.  We're mainly targeting Skia users, not Skia developers.
 if (NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE Release)
@@ -74,6 +76,7 @@ if (NOT UNIX)
                 ../src/ports/SkTime_Unix.cpp
                 ../src/utils/SkThreadUtils_pthread.cpp)
 endif()
+
 if (APPLE OR NOT UNIX)
     remove_srcs(../src/gpu/gl/glx/*
                 ../src/ports/SkFontMgr_fontconfig*.cpp
@@ -119,8 +122,10 @@ endif()
 
 if (WIN32)
     if(SKIA_GDI)
+        message( STATUS "SKIA use GDI" )
         remove_srcs(../src/ports/SkFontMgr_win_dw_factory.cpp)
     else()
+        message( STATUS "SKIA use DirectWrite" )
         remove_srcs(../src/ports/SkFontMgr_win_gdi_factory.cpp)
     endif()
 endif()
@@ -145,11 +150,14 @@ set_source_files_properties(${avx_srcs}   PROPERTIES COMPILE_FLAGS -mavx)
 set_source_files_properties(${avx2_srcs}  PROPERTIES COMPILE_FLAGS -mavx2)
 endif()
 
+include( ExternalProject )
+
 # Detect our optional dependencies.
 # If we can't find them, don't build the parts of Skia that use them.
 find_package (EXPAT)
 find_package (Lua)
 find_package (ZLIB)
+
 # No find_package for libwebp as far as I can tell, so simulate it here.
 find_path (WEBP_INCLUDE_DIRS "webp/decode.h")
 find_library (WEBP_LIBRARIES webp)
@@ -168,6 +176,7 @@ endif()
 
 # Do not compile SkRawCodec.
 remove_srcs(../src/codec/*Raw*.cpp)
+set(skia_dependecies)
 
 # TODO: macro away this if (found) ... else() ... endif() stuff.
 
@@ -215,14 +224,54 @@ else()
     remove_srcs(../src/codec/*Ico*)
 endif()
 
-if (ZLIB_FOUND)
-    list (APPEND private_includes ${ZLIB_INCLUDE_DIRS})
-    list (APPEND libs             ${ZLIB_LIBRARIES})
-    remove_srcs(../src/pdf/SkDocument_PDF_None.cpp)
-else()
-    remove_srcs(../src/pdf/*.cpp)
-    set (srcs ${srcs} ../src/pdf/SkDocument_PDF_None.cpp)
+if (NOT ZLIB_FOUND)
+    message( STATUS "Will build ZLIB from external sources" )
+
+    set( zlib_source_path ${CMAKE_CURRENT_BINARY_DIR}/external/zlib/src/external_zlib/ )
+    set( zlib_cmake_file_path ${zlib_source_path}/CMakeLists.txt )
+    
+    ExternalProject_Add( external_zlib
+                    PREFIX            ${CMAKE_CURRENT_BINARY_DIR}/external/zlib
+                    INSTALL_DIR       ${CMAKE_CURRENT_BINARY_DIR}
+                    # http://www.zlib.net/
+                    URL http://zlib.net/zlib-1.2.8.tar.gz
+                    # GIT_REPOSITORY    git@github.com:madler/zlib.git
+                    # GIT_TAG           v1.2.8
+                    CMAKE_ARGS        -DASM686=off
+                                      -DAMD64=off
+                                      -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
+                                      -DCMAKE_COMPILER_IS_GNUCXX=${CMAKE_COMPILER_IS_GNUCXX}
+                                      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                                      -DCMAKE_C_FLAGS=${GL_BINDING_C_FLAGS}
+    )
+    
+    set(ZLIB_FOUND TRUE)
+    set(ZLIB_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include)    
+    set(ZLIB_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
+    
+    add_library(ZLibStatic STATIC IMPORTED GLOBAL)
+    add_dependencies(ZLibStatic external_zlib)
+    if(MSVC)
+        set_target_properties(ZLibStatic PROPERTIES
+                            IMPORTED_LOCATION_DEBUG ${CMAKE_CURRENT_BINARY_DIR}/lib/zlibstaticd.lib
+                            IMPORTED_LOCATION_MINSIZEREL ${CMAKE_CURRENT_BINARY_DIR}/lib/zlibstatic.lib
+                            IMPORTED_LOCATION_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/lib/zlibstatic.lib
+                            IMPORTED_LOCATION_RELWITHDEBINFO ${CMAKE_CURRENT_BINARY_DIR}/lib/zlibstatic.lib
+                            LINKER_LANGUAGE C)
+    else()
+        set_target_properties(ZLibStatic PROPERTIES
+                            IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/lib/libz.a
+                          LINKER_LANGUAGE C)
+    
+    endif()
+
+    set(ZLIB_LIBRARIES ZLibStatic) 
+    list(APPEND skia_dependecies ZLibStatic)
 endif()
+
+list (APPEND libs ${ZLIB_LIBRARIES})
+list (APPEND private_includes ${ZLIB_INCLUDE_DIRS})
+remove_srcs(../src/pdf/SkDocument_PDF_None.cpp)
 
 if (WEBP_INCLUDE_DIRS AND WEBP_LIBRARIES)
     list (APPEND private_includes ${WEBP_INCLUDE_DIRS})
@@ -264,6 +313,11 @@ endif()
 find_package(OpenGL REQUIRED)
 list (APPEND libs  ${OPENGL_LIBRARIES})
 
+add_definitions(-DSK_SUPPORT_LEGACY_PATHEFFECT_PTR)
+add_definitions(-DSK_SUPPORT_LEGACY_MASKFILTER_PTR)
+add_definitions(-DSK_SUPPORT_LEGACY_MINOR_EFFECT_PTR)
+
+
 # This is our main output, libskia.so.
 # We mostly build an .so here because it helps test we've linked everything,
 # not so much that we think Skia is a good candidate to ship as a shared library.
@@ -271,6 +325,11 @@ add_library (skia SHARED ${srcs})
 set_property(TARGET skia PROPERTY CXX_STANDARD 11)
 set_property(TARGET skia PROPERTY CXX_STANDARD_REQUIRED ON)
 set_target_properties(skia PROPERTIES LINKER_LANGUAGE CXX)
+
+if(skia_dependecies)
+    add_dependencies(skia ${skia_dependecies})
+endif()
+
 
 target_compile_definitions(skia
     PUBLIC  ${public_defines}
@@ -283,6 +342,11 @@ target_include_directories(skia
 target_link_libraries(skia
     PUBLIC
     PRIVATE ${libs})
+
+message(STATUS "SKIA external libraries: " )    
+foreach(lib ${libs})
+		message(STATUS " link to ${lib}" )    
+endforeach()
 
 if (MSVC)
 	target_compile_definitions(skia 
@@ -365,9 +429,41 @@ file(APPEND ${skia_h_path} "\n#endif  // skia_DEFINED\n")
 
 # Now build a simple example app that uses Skia via libskia.so.
 add_executable(example example.cpp)
+add_dependencies(example skia)
 target_link_libraries(example skia ${OPENGL_LIBRARIES})
 
 # Now build a experimental app
-add_executable(experiment ../experimental/tools/coreGraphicsPdf2png.cpp)
-target_link_libraries(experiment skia)
-# target_include_directories(experiment )
+file (GLOB_RECURSE pdfView ../experimental/PdfViewer/*.cpp)
+
+add_executable(pdf2bmp ${pdfView}
+    ../src/core/SkOpts.cpp
+    ../src/opts/SkOpts_ssse3.cpp
+    ../src/opts/SkOpts_sse41.cpp
+    ../src/core/SkHalf.cpp 
+    ../src/core/SkTSearch.cpp 
+    ../src/core/SkChunkAlloc.cpp 
+    ../src/core/SkUtils.cpp
+    ../src/codec/SkCodecImageGenerator.cpp
+    ../src/codec/SkCodec.cpp
+    ../src/codec/SkSampler.cpp
+    ../src/codec/SkMasks.cpp 
+    ../src/codec/SkSwizzler.cpp
+    ../src/codec/SkMaskSwizzler.cpp 
+    ../src/codec/SkBmpCodec.cpp
+    ../src/codec/SkBmpMaskCodec.cpp
+    ../src/codec/SkBmpRLECodec.cpp
+    ../src/codec/SkBmpStandardCodec.cpp
+    ../src/codec/SkWbmpCodec.cpp 
+)
+    
+add_dependencies(pdf2bmp skia)
+target_include_directories(pdf2bmp PRIVATE
+    ../experimental/PdfViewer
+    ../experimental/PdfViewer/inc
+    ../experimental/PdfViewer/src
+    ../experimental/PdfViewer/pdfparser
+    ../experimental/PdfViewer/pdfparser/native
+    ../experimental/PdfViewer/pdfparser/native/pdfapi
+    ${private_includes}
+    )
+target_link_libraries(pdf2bmp skia)

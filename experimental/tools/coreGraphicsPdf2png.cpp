@@ -12,6 +12,7 @@
 #include "SkImageEncoder.h"
 #include "SkStream.h"
 
+
 class StdOutWStream : public SkWStream {
 public:
     StdOutWStream() : fBytesWritten(0) {}
