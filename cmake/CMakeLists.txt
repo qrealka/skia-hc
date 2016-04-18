@@ -266,7 +266,7 @@ if (NOT ZLIB_FOUND)
     endif()
 
     set(ZLIB_LIBRARIES ZLibStatic) 
-    list(APPEND skia_dependecies ZLibStatic)
+    #list(APPEND skia_dependecies ZLibStatic)
 endif()
 
 list (APPEND libs ${ZLIB_LIBRARIES})
@@ -326,9 +326,9 @@ set_property(TARGET skia PROPERTY CXX_STANDARD 11)
 set_property(TARGET skia PROPERTY CXX_STANDARD_REQUIRED ON)
 set_target_properties(skia PROPERTIES LINKER_LANGUAGE CXX)
 
-if(skia_dependecies)
-    add_dependencies(skia ${skia_dependecies})
-endif()
+#if(skia_dependecies)
+#    add_dependencies(skia ${skia_dependecies})
+#endif()
 
 
 target_compile_definitions(skia
