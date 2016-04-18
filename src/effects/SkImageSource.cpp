@@ -15,9 +15,29 @@
 #include "SkWriteBuffer.h"
 #include "SkString.h"
 
+sk_sp<SkImageFilter> SkImageSource::Make(sk_sp<SkImage> image) {
+    if (!image) {
+        return nullptr;
+    }
+
+    return sk_sp<SkImageFilter>(new SkImageSource(std::move(image)));
+}
+
+sk_sp<SkImageFilter> SkImageSource::Make(sk_sp<SkImage> image,
+                                         const SkRect& srcRect,
+                                         const SkRect& dstRect,
+                                         SkFilterQuality filterQuality) {
+    if (!image) {
+        return nullptr;
+    }
+
+    return sk_sp<SkImageFilter>(new SkImageSource(std::move(image),
+                                                  srcRect, dstRect,
+                                                  filterQuality));
+}
 
 SkImageSource::SkImageSource(sk_sp<SkImage> image)
-    : INHERITED(0, nullptr)
+    : INHERITED(nullptr, 0, nullptr)
     , fImage(std::move(image))
     , fSrcRect(SkRect::MakeIWH(fImage->width(), fImage->height()))
     , fDstRect(fSrcRect)
@@ -28,7 +48,7 @@ SkImageSource::SkImageSource(sk_sp<SkImage> image,
                              const SkRect& srcRect,
                              const SkRect& dstRect,
                              SkFilterQuality filterQuality)
-    : INHERITED(0, nullptr)
+    : INHERITED(nullptr, 0, nullptr)
     , fImage(std::move(image))
     , fSrcRect(srcRect)
     , fDstRect(dstRect)

@@ -88,11 +88,18 @@ def get_args(bot):
   if 'GalaxyS3' in bot:
       configs.append('gpudft')
 
+  # CommandBuffer bot *only* runs the command_buffer config.
+  if 'CommandBuffer' in bot:
+    configs = ['commandbuffer']
+
+  # Vulkan bot *only* runs the vk config.
+  if 'Vulkan' in bot:
+    configs = ['vk']
+
   args.append('--config')
   args.extend(configs)
 
   # Run tests, gms, and image decoding tests everywhere.
-  # TODO: remove skp from default --src list?
   args.extend('--src tests gm image'.split(' '))
 
   if 'GalaxyS' in bot:
@@ -160,14 +167,12 @@ def get_args(bot):
                'c_gms',
                'colortype',
                'colortype_xfermodes',
-               'colorwheelnative',
                'drawfilter',
                'fontmgr_bounds_0.75_0',
                'fontmgr_bounds_1_-0.25',
                'fontmgr_bounds',
                'fontmgr_match',
                'fontmgr_iter',
-               'lightingshader',
                'verylargebitmap',              # Windows only.
                'verylarge_picture_image']:     # Windows only.
     blacklist.extend(['serialize-8888', 'gm', '_', test])
@@ -252,19 +257,21 @@ def self_test():
   cases = [
     'Pretend-iOS-Bot',
     'Test-Android-GCC-AndroidOne-GPU-Mali400MP2-Arm7-Release',
-    'Test-Android-GCC-Nexus9-GPU-TegraK1-Arm64-Debug',
     'Test-Android-GCC-GalaxyS3-GPU-Mali400-Arm7-Debug',
     'Test-Android-GCC-GalaxyS4-GPU-SGX544-Arm7-Release',
     'Test-Android-GCC-Nexus7-GPU-Tegra3-Arm7-Release',
+    'Test-Android-GCC-Nexus9-GPU-TegraK1-Arm64-Debug',
     'Test-Android-GCC-NexusPlayer-CPU-SSSE3-x86-Release',
-    'Test-Ubuntu-GCC-ShuttleA-GPU-GTX550Ti-x86_64-Release-Valgrind',
+    'Test-Android-GCC-NVIDIA_Shield-GPU-TegraX1-Arm64-Release',
+    'Test-Mac-Clang-MacMini4.1-GPU-GeForce320M-x86_64-Release',
+    'Test-Mac-Clang-MacMini6.2-GPU-HD4000-x86_64-Debug-CommandBuffer',
+    'Test-Mac10.8-Clang-MacMini4.1-CPU-SSE4-x86_64-Release',
     'Test-Ubuntu-GCC-GCE-CPU-AVX2-x86_64-Debug-MSAN',
     'Test-Ubuntu-GCC-GCE-CPU-AVX2-x86_64-Release-TSAN',
     'Test-Ubuntu-GCC-GCE-CPU-AVX2-x86_64-Release-Valgrind',
+    'Test-Ubuntu-GCC-ShuttleA-GPU-GTX550Ti-x86_64-Release-Valgrind',
+    'Test-Win10-MSVC-ShuttleA-GPU-GTX660-x86_64-Debug-Vulkan',
     'Test-Win7-MSVC-ShuttleA-GPU-HD2000-x86-Debug-ANGLE',
-    'Test-Mac10.8-Clang-MacMini4.1-CPU-SSE4-x86_64-Release',
-    'Test-Mac-Clang-MacMini4.1-GPU-GeForce320M-x86_64-Release',
-    'Test-Android-GCC-NVIDIA_Shield-GPU-TegraX1-Arm64-Release',
   ]
 
   cov = coverage.coverage()

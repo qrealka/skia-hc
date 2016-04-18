@@ -58,7 +58,7 @@ SkFontConfigInterface* SkFontHost_fontconfig_ref_global() {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-static bool find_by_FontIdentity(SkTypeface* cachedTypeface, const SkFontStyle&, void* ctx) {
+static bool find_by_FontIdentity(SkTypeface* cachedTypeface, void* ctx) {
     typedef SkFontConfigInterface::FontIdentity FontIdentity;
     FontConfigTypeface* cachedFCTypeface = static_cast<FontConfigTypeface*>(cachedTypeface);
     FontIdentity* identity = static_cast<FontIdentity*>(ctx);
@@ -167,7 +167,7 @@ public:
 };
 
 SkTypeface* FontConfigTypeface::LegacyCreateTypeface(const char requestedFamilyName[],
-                                                     SkTypeface::Style requestedOldStyle)
+                                                     SkFontStyle requestedStyle)
 {
     SkAutoTUnref<SkFontConfigInterface> fci(RefFCI());
     if (nullptr == fci.get()) {
@@ -176,7 +176,6 @@ SkTypeface* FontConfigTypeface::LegacyCreateTypeface(const char requestedFamilyN
 
     // Check if this request is already in the request cache.
     using Request = SkFontHostRequestCache::Request;
-    SkFontStyle requestedStyle(requestedOldStyle);
     SkAutoTDelete<Request> request(Request::Create(requestedFamilyName, requestedStyle));
     SkTypeface* face = SkFontHostRequestCache::FindAndRef(request);
     if (face) {
@@ -185,9 +184,9 @@ SkTypeface* FontConfigTypeface::LegacyCreateTypeface(const char requestedFamilyN
 
     SkFontConfigInterface::FontIdentity identity;
     SkString outFamilyName;
-    SkTypeface::Style outOldStyle;
-    if (!fci->matchFamilyName(requestedFamilyName, requestedOldStyle,
-                              &identity, &outFamilyName, &outOldStyle))
+    SkFontStyle outStyle;
+    if (!fci->matchFamilyName(requestedFamilyName, requestedStyle,
+                              &identity, &outFamilyName, &outStyle))
     {
         return nullptr;
     }
@@ -195,9 +194,9 @@ SkTypeface* FontConfigTypeface::LegacyCreateTypeface(const char requestedFamilyN
     // Check if a typeface with this FontIdentity is already in the FontIdentity cache.
     face = SkTypefaceCache::FindByProcAndRef(find_by_FontIdentity, &identity);
     if (!face) {
-        face = FontConfigTypeface::Create(SkFontStyle(outOldStyle), identity, outFamilyName);
+        face = FontConfigTypeface::Create(outStyle, identity, outFamilyName);
         // Add this FontIdentity to the FontIdentity cache.
-        SkTypefaceCache::Add(face, SkFontStyle(outOldStyle));
+        SkTypefaceCache::Add(face);
     }
     // Add this request to the request cache.
     SkFontHostRequestCache::Add(face, request.release());

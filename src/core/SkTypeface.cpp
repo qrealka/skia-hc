@@ -33,6 +33,8 @@ SkTypeface* (*gDeserializeTypefaceDelegate)(SkStream* ) = nullptr;
 
 ///////////////////////////////////////////////////////////////////////////////
 
+namespace {
+
 class SkEmptyTypeface : public SkTypeface {
 public:
     static SkEmptyTypeface* Create() { return new SkEmptyTypeface; }
@@ -40,7 +42,8 @@ protected:
     SkEmptyTypeface() : SkTypeface(SkFontStyle(), 0, true) { }
 
     SkStreamAsset* onOpenStream(int* ttcIndex) const override { return nullptr; }
-    SkScalerContext* onCreateScalerContext(const SkDescriptor*) const override {
+    SkScalerContext* onCreateScalerContext(const SkScalerContextEffects&,
+                                           const SkDescriptor*) const override {
         return nullptr;
     }
     void onFilterRec(SkScalerContextRec*) const override { }
@@ -73,6 +76,8 @@ protected:
     }
 };
 
+}
+
 SK_DECLARE_STATIC_MUTEX(gCreateDefaultMutex);
 SK_DECLARE_STATIC_ONCE_PTR(SkTypeface, defaults[4]);
 
@@ -86,7 +91,7 @@ SkTypeface* SkTypeface::GetDefaultTypeface(Style style) {
         SkAutoMutexAcquire lock(&gCreateDefaultMutex);
 
         SkAutoTUnref<SkFontMgr> fm(SkFontMgr::RefDefault());
-        SkTypeface* t = fm->legacyCreateTypeface(nullptr, style);
+        SkTypeface* t = fm->legacyCreateTypeface(nullptr, SkFontStyle::FromOldStyle(style));
         return t ? t : SkEmptyTypeface::Create();
     });
 }
@@ -119,7 +124,7 @@ SkTypeface* SkTypeface::CreateFromName(const char name[], Style style) {
         return RefDefault(style);
     }
     SkAutoTUnref<SkFontMgr> fm(SkFontMgr::RefDefault());
-    return fm->legacyCreateTypeface(name, style);
+    return fm->legacyCreateTypeface(name, SkFontStyle::FromOldStyle(style));
 }
 
 SkTypeface* SkTypeface::CreateFromTypeface(const SkTypeface* family, Style s) {
@@ -348,7 +353,8 @@ bool SkTypeface::onComputeBounds(SkRect* bounds) const {
     desc->init();
     desc->addEntry(kRec_SkDescriptorTag, sizeof(rec), &rec);
 
-    SkAutoTDelete<SkScalerContext> ctx(this->createScalerContext(desc, true));
+    SkScalerContextEffects noeffects;
+    SkAutoTDelete<SkScalerContext> ctx(this->createScalerContext(noeffects, desc, true));
     if (ctx.get()) {
         SkPaint::FontMetrics fm;
         ctx->getFontMetrics(&fm);

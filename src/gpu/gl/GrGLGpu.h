@@ -60,6 +60,8 @@ public:
     void bindTexture(int unitIdx, const GrTextureParams& params, bool dstConfigAllowsSRGB,
                      GrGLTexture* texture);
 
+    void bindTexelBuffer(int unitIdx, intptr_t offsetInBytes, GrPixelConfig, GrGLBuffer*);
+
     bool onGetReadPixelsInfo(GrSurface* srcSurface, int readWidth, int readHeight, size_t rowBytes,
                              GrPixelConfig readConfig, DrawPreference*,
                              ReadPixelTempDrawInfo*) override;
@@ -87,6 +89,9 @@ public:
     // When 'type' is kIndex_GrBufferType, this function will also implicitly bind the default VAO.
     // If the caller wishes to bind an index buffer to a specific VAO, it can call glBind directly.
     GrGLenum bindBuffer(GrBufferType type, const GrGLBuffer*);
+
+    // Called by GrGLBuffer after its buffer object has been destroyed.
+    void notifyBufferReleased(const GrGLBuffer*);
 
     const GrGLContext* glContextForTesting() const override {
         return &this->glContext();
@@ -136,8 +141,7 @@ private:
     // compatible stencil format, or negative if there is no compatible stencil format.
     int getCompatibleStencilIndex(GrPixelConfig config);
 
-    // If |desc.fTextureStorageAllocator| exists, use that to create the
-    // texture. Otherwise, create the texture directly.
+
     // Returns whether the texture is successfully created. On success, the
     // result is stored in |info|.
     // The texture is populated with |texels|, if it exists.
@@ -145,8 +149,6 @@ private:
     bool createTextureImpl(const GrSurfaceDesc& desc, GrGLTextureInfo* info,
                            bool renderTarget, GrGLTexture::TexParams* initialTexParams,
                            const SkTArray<GrMipLevel>& texels);
-    bool createTextureExternalAllocatorImpl(const GrSurfaceDesc& desc, GrGLTextureInfo* info,
-                                            const SkTArray<GrMipLevel>& texels);
 
     void onClear(GrRenderTarget*, const SkIRect& rect, GrColor color) override;
 
@@ -205,6 +207,8 @@ private:
 
     // binds texture unit in GL
     void setTextureUnit(int unitIdx);
+
+    void setTextureSwizzle(int unitIdx, GrGLenum target, const GrGLenum swizzle[]);
 
     // Flushes state from GrPipeline to GL. Returns false if the state couldn't be set.
     bool flushGLState(const GrPipeline& pipeline, const GrPrimitiveProcessor& primProc);
@@ -497,6 +501,23 @@ private:
     uint32_t                    fHWBoundRenderTargetUniqueID;
     TriState                    fHWSRGBFramebuffer;
     SkTArray<uint32_t, true>    fHWBoundTextureUniqueIDs;
+
+    struct BufferTexture {
+        BufferTexture() : fTextureID(0), fKnownBound(false),
+                          fAttachedBufferUniqueID(SK_InvalidUniqueID),
+                          fSwizzle(GrSwizzle::RGBA()) {}
+
+        GrGLuint        fTextureID;
+        bool            fKnownBound;
+        intptr_t        fOffsetInBytes;
+        GrPixelConfig   fTexelConfig;
+        size_t          fAttachedSizeInBytes;
+        uint32_t        fAttachedBufferUniqueID;
+        GrSwizzle       fSwizzle;
+    };
+
+    SkTArray<BufferTexture, true>   fHWBufferTextures;
+    int                             fHWMaxUsedBufferTextureUnit;
 
     // EXT_raster_multisample.
     TriState                    fHWRasterMultisampleEnabled;

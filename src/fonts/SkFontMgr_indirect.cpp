@@ -185,15 +185,7 @@ SkTypeface* SkFontMgr_Indirect::onCreateFromData(SkData* data, int ttcIndex) con
 }
 
 SkTypeface* SkFontMgr_Indirect::onLegacyCreateTypeface(const char familyName[],
-                                                       unsigned styleBits) const {
-    bool bold = SkToBool(styleBits & SkTypeface::kBold);
-    bool italic = SkToBool(styleBits & SkTypeface::kItalic);
-    SkFontStyle style = SkFontStyle(bold ? SkFontStyle::kBold_Weight
-                                         : SkFontStyle::kNormal_Weight,
-                                    SkFontStyle::kNormal_Width,
-                                    italic ? SkFontStyle::kItalic_Slant
-                                           : SkFontStyle::kUpright_Slant);
-
+                                                       SkFontStyle style) const {
     SkAutoTUnref<SkTypeface> face(this->matchFamilyStyle(familyName, style));
 
     if (nullptr == face.get()) {

@@ -474,6 +474,7 @@ private:
         SkAutoTUnref<SkTypeface> fTypeface;
         SkSTArray<kMinSubRuns, SubRunInfo> fSubRunInfo;
         SkAutoDescriptor fDescriptor;
+        SkScalerContextEffects fEffects;
 
         // Distance field text cannot draw coloremoji, and so has to fall back.  However,
         // though the distance field text and the coloremoji may share the same run, they
@@ -501,6 +502,7 @@ private:
                                     GrColor color,
                                     const SkPaint& skPaint, const SkSurfaceProps& props,
                                     const GrDistanceFieldAdjustTable* distanceAdjustTable,
+                                    bool useGammaCorrectDistanceTable,
                                     GrBatchFontCache* cache);
 
     struct BigGlyph {

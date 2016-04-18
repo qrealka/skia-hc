@@ -736,18 +736,27 @@ void GrGLCaps::initGLSL(const GrGLContextInfo& ctxInfo) {
     }
 
     if (kGL_GrGLStandard == standard) {
-        glslCaps->fBufferTextureSupport = ctxInfo.version() > GR_GL_VER(3, 1) &&
-                                          ctxInfo.glslGeneration() >= k330_GrGLSLGeneration;
+        glslCaps->fTexelFetchSupport = ctxInfo.glslGeneration() >= k130_GrGLSLGeneration;
     } else {
-        if (ctxInfo.version() > GR_GL_VER(3, 2) &&
-            ctxInfo.glslGeneration() >= k320es_GrGLSLGeneration) {
-            glslCaps->fBufferTextureSupport = true;
-        } else if (ctxInfo.hasExtension("GL_OES_texture_buffer")) {
-            glslCaps->fBufferTextureSupport = true;
-            glslCaps->fBufferTextureExtensionString = "GL_OES_texture_buffer";
-        } else if (ctxInfo.hasExtension("GL_EXT_texture_buffer")) {
-            glslCaps->fBufferTextureSupport = true;
-            glslCaps->fBufferTextureExtensionString = "GL_EXT_texture_buffer";
+        glslCaps->fTexelFetchSupport =
+            ctxInfo.glslGeneration() >= k330_GrGLSLGeneration; // We use this value for GLSL ES 3.0.
+    }
+
+    if (glslCaps->fTexelFetchSupport) {
+        if (kGL_GrGLStandard == standard) {
+            glslCaps->fTexelBufferSupport = ctxInfo.version() >= GR_GL_VER(4, 3) &&
+                                            ctxInfo.glslGeneration() >= k330_GrGLSLGeneration;
+        } else {
+            if (ctxInfo.version() >= GR_GL_VER(3, 2) &&
+                ctxInfo.glslGeneration() >= k320es_GrGLSLGeneration) {
+                glslCaps->fTexelBufferSupport = true;
+            } else if (ctxInfo.hasExtension("GL_OES_texture_buffer")) {
+                glslCaps->fTexelBufferSupport = true;
+                glslCaps->fTexelBufferExtensionString = "GL_OES_texture_buffer";
+            } else if (ctxInfo.hasExtension("GL_EXT_texture_buffer")) {
+                glslCaps->fTexelBufferSupport = true;
+                glslCaps->fTexelBufferExtensionString = "GL_EXT_texture_buffer";
+            }
         }
     }
 
@@ -1197,6 +1206,7 @@ void GrGLCaps::initShaderPrecisionTable(const GrGLContextInfo& ctxInfo,
                                                glslCaps->fFloatPrecisions[kVertex_GrShaderType][p];
         }
     }
+    glslCaps->initSamplerPrecisionTable();
 }
 
 bool GrGLCaps::bgraIsInternalFormat() const {
@@ -1372,6 +1382,8 @@ void GrGLCaps::initConfigTable(const GrGLContextInfo& ctxInfo, const GrGLInterfa
         texStorageSupported = false;
     }
 
+    bool texelBufferSupport = this->shaderCaps()->texelBufferSupport();
+
     fConfigTable[kUnknown_GrPixelConfig].fFormats.fBaseInternalFormat = 0;
     fConfigTable[kUnknown_GrPixelConfig].fFormats.fSizedInternalFormat = 0;
     fConfigTable[kUnknown_GrPixelConfig].fFormats.fExternalFormat[kOther_ExternalFormatUsage] = 0;
@@ -1397,6 +1409,9 @@ void GrGLCaps::initConfigTable(const GrGLContextInfo& ctxInfo, const GrGLInterfa
     }
     if (texStorageSupported) {
         fConfigTable[kRGBA_8888_GrPixelConfig].fFlags |= ConfigInfo::kCanUseTexStorage_Flag;
+    }
+    if (texelBufferSupport) {
+        fConfigTable[kRGBA_8888_GrPixelConfig].fFlags |= ConfigInfo::kCanUseWithTexelBuffer_Flag;
     }
     fConfigTable[kRGBA_8888_GrPixelConfig].fSwizzle = GrSwizzle::RGBA();
 
@@ -1557,6 +1572,9 @@ void GrGLCaps::initConfigTable(const GrGLContextInfo& ctxInfo, const GrGLInterfa
         fConfigTable[kAlpha_8_GrPixelConfig].fFormats.fExternalFormat[kOther_ExternalFormatUsage] =
             GR_GL_RED;
         fConfigTable[kAlpha_8_GrPixelConfig].fSwizzle = GrSwizzle::RRRR();
+        if (texelBufferSupport) {
+            fConfigTable[kAlpha_8_GrPixelConfig].fFlags |= ConfigInfo::kCanUseWithTexelBuffer_Flag;
+        }
     } else {
         fConfigTable[kAlpha_8_GrPixelConfig].fFormats.fBaseInternalFormat = GR_GL_ALPHA;
         fConfigTable[kAlpha_8_GrPixelConfig].fFormats.fSizedInternalFormat = GR_GL_ALPHA8;
@@ -1625,6 +1643,9 @@ void GrGLCaps::initConfigTable(const GrGLContextInfo& ctxInfo, const GrGLInterfa
     if (texStorageSupported) {
         fConfigTable[kRGBA_float_GrPixelConfig].fFlags |= ConfigInfo::kCanUseTexStorage_Flag;
     }
+    if (texelBufferSupport) {
+        fConfigTable[kRGBA_float_GrPixelConfig].fFlags |= ConfigInfo::kCanUseWithTexelBuffer_Flag;
+    }
     fConfigTable[kRGBA_float_GrPixelConfig].fSwizzle = GrSwizzle::RGBA();
 
     if (this->textureRedSupport()) {
@@ -1633,6 +1654,10 @@ void GrGLCaps::initConfigTable(const GrGLContextInfo& ctxInfo, const GrGLInterfa
         fConfigTable[kAlpha_half_GrPixelConfig].fFormats.fExternalFormat[kOther_ExternalFormatUsage]
             = GR_GL_RED;
         fConfigTable[kAlpha_half_GrPixelConfig].fSwizzle = GrSwizzle::RRRR();
+        if (texelBufferSupport) {
+            fConfigTable[kAlpha_half_GrPixelConfig].fFlags |=
+                ConfigInfo::kCanUseWithTexelBuffer_Flag;
+        }
     } else {
         fConfigTable[kAlpha_half_GrPixelConfig].fFormats.fBaseInternalFormat = GR_GL_ALPHA;
         fConfigTable[kAlpha_half_GrPixelConfig].fFormats.fSizedInternalFormat = GR_GL_ALPHA16F;
@@ -1680,6 +1705,9 @@ void GrGLCaps::initConfigTable(const GrGLContextInfo& ctxInfo, const GrGLInterfa
     }
     if (texStorageSupported) {
         fConfigTable[kRGBA_half_GrPixelConfig].fFlags |= ConfigInfo::kCanUseTexStorage_Flag;
+    }
+    if (texelBufferSupport) {
+        fConfigTable[kRGBA_half_GrPixelConfig].fFlags |= ConfigInfo::kCanUseWithTexelBuffer_Flag;
     }
     fConfigTable[kRGBA_half_GrPixelConfig].fSwizzle = GrSwizzle::RGBA();
 

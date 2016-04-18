@@ -12,6 +12,7 @@
 #include "SkBitmapDevice.h"
 #include "SkChecksum.h"
 #include "SkDevice.h"
+#include "SkFuzzLogging.h"
 #include "SkLocalMatrixImageFilter.h"
 #include "SkMatrixImageFilter.h"
 #include "SkOncePtr.h"
@@ -122,12 +123,6 @@ void SkImageFilter::Common::allocInputs(int count) {
     fInputs.reset(count);
 }
 
-void SkImageFilter::Common::detachInputs(SkImageFilter** inputs) {
-    for (int i = 0; i < fInputs.count(); ++i) {
-        inputs[i] = fInputs[i].release();
-    }
-}
-
 bool SkImageFilter::Common::unflatten(SkReadBuffer& buffer, int expectedCount) {
     const int count = buffer.readInt();
     if (!buffer.validate(count >= 0)) {
@@ -137,6 +132,7 @@ bool SkImageFilter::Common::unflatten(SkReadBuffer& buffer, int expectedCount) {
         return false;
     }
 
+    SkFUZZF(("allocInputs: %d\n", count));
     this->allocInputs(count);
     for (int i = 0; i < count; i++) {
         if (buffer.readBool()) {
@@ -163,67 +159,46 @@ bool SkImageFilter::Common::unflatten(SkReadBuffer& buffer, int expectedCount) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+void SkImageFilter::init(sk_sp<SkImageFilter>* inputs,
+                         int inputCount,
+                         const CropRect* cropRect) {
+    fCropRect = cropRect ? *cropRect : CropRect(SkRect(), 0x0);
+
+    fInputs.reset(inputCount);
+
+    for (int i = 0; i < inputCount; ++i) {
+        if (!inputs[i] || inputs[i]->usesSrcInput()) {
+            fUsesSrcInput = true;
+        }
+        fInputs[i] = inputs[i];
+    }
+}
+
 SkImageFilter::SkImageFilter(sk_sp<SkImageFilter>* inputs,
                              int inputCount,
                              const CropRect* cropRect)
-    : fInputCount(inputCount),
-    fInputs(new SkImageFilter*[inputCount]),
-    fUsesSrcInput(false),
-    fCropRect(cropRect ? *cropRect : CropRect(SkRect(), 0x0)),
-    fUniqueID(next_image_filter_unique_id()) {
-    for (int i = 0; i < inputCount; ++i) {
-        if (nullptr == inputs[i] || inputs[i]->usesSrcInput()) {
-            fUsesSrcInput = true;
-        }
-        fInputs[i] = SkSafeRef(inputs[i].get());
-    }
-}
-
-SkImageFilter::SkImageFilter(int inputCount, SkImageFilter** inputs, const CropRect* cropRect)
-  : fInputCount(inputCount),
-    fInputs(new SkImageFilter*[inputCount]),
-    fUsesSrcInput(false),
-    fCropRect(cropRect ? *cropRect : CropRect(SkRect(), 0x0)),
-    fUniqueID(next_image_filter_unique_id()) {
-    for (int i = 0; i < inputCount; ++i) {
-        if (nullptr == inputs[i] || inputs[i]->usesSrcInput()) {
-            fUsesSrcInput = true;
-        }
-        fInputs[i] = SkSafeRef(inputs[i]);
-    }
+    : fUsesSrcInput(false)
+    , fUniqueID(next_image_filter_unique_id()) {
+    this->init(inputs, inputCount, cropRect);
 }
 
 SkImageFilter::~SkImageFilter() {
-    for (int i = 0; i < fInputCount; i++) {
-        SkSafeUnref(fInputs[i]);
-    }
-    delete[] fInputs;
     Cache::Get()->purgeByKeys(fCacheKeys.begin(), fCacheKeys.count());
 }
 
 SkImageFilter::SkImageFilter(int inputCount, SkReadBuffer& buffer)
-  : fUsesSrcInput(false)
-  , fUniqueID(next_image_filter_unique_id()) {
+    : fUsesSrcInput(false)
+    , fCropRect(SkRect(), 0x0)
+    , fUniqueID(next_image_filter_unique_id()) {
     Common common;
     if (common.unflatten(buffer, inputCount)) {
-        fCropRect = common.cropRect();
-        fInputCount = common.inputCount();
-        fInputs = new SkImageFilter* [fInputCount];
-        common.detachInputs(fInputs);
-        for (int i = 0; i < fInputCount; ++i) {
-            if (nullptr == fInputs[i] || fInputs[i]->usesSrcInput()) {
-                fUsesSrcInput = true;
-            }
-        }
-    } else {
-        fInputCount = 0;
-        fInputs = nullptr;
+        this->init(common.inputs(), common.inputCount(), &common.cropRect());
     }
 }
 
 void SkImageFilter::flatten(SkWriteBuffer& buffer) const {
-    buffer.writeInt(fInputCount);
-    for (int i = 0; i < fInputCount; i++) {
+    buffer.writeInt(fInputs.count());
+    for (int i = 0; i < fInputs.count(); i++) {
         SkImageFilter* input = this->getInput(i);
         buffer.writeBool(input != nullptr);
         if (input != nullptr) {
@@ -249,6 +224,16 @@ sk_sp<SkSpecialImage> SkImageFilter::filterImage(SkSpecialImage* src, const Cont
     }
 
     sk_sp<SkSpecialImage> result(this->onFilterImage(src, context, offset));
+
+#if SK_SUPPORT_GPU
+    if (src->isTextureBacked() && result && !result->isTextureBacked()) {
+        // Keep the result on the GPU - this is still required for some
+        // image filters that don't support GPU in all cases
+        GrContext* context = src->getContext();
+        result = result->makeTextureImage(src->internal_getProxy(), context);
+    }
+#endif
+
     if (result && context.cache()) {
         context.cache()->set(key, result.get(), *offset);
         SkAutoMutexAcquire mutex(fMutex);
@@ -326,11 +311,11 @@ SkIRect SkImageFilter::filterBounds(const SkIRect& src, const SkMatrix& ctm,
 }
 
 SkRect SkImageFilter::computeFastBounds(const SkRect& src) const {
-    if (0 == fInputCount) {
+    if (0 == this->countInputs()) {
         return src;
     }
     SkRect combinedBounds = this->getInput(0) ? this->getInput(0)->computeFastBounds(src) : src;
-    for (int i = 1; i < fInputCount; i++) {
+    for (int i = 1; i < this->countInputs(); i++) {
         SkImageFilter* input = this->getInput(i);
         if (input) {
             combinedBounds.join(input->computeFastBounds(src));
@@ -345,7 +330,7 @@ bool SkImageFilter::canComputeFastBounds() const {
     if (this->affectsTransparentBlack()) {
         return false;
     }
-    for (int i = 0; i < fInputCount; i++) {
+    for (int i = 0; i < this->countInputs(); i++) {
         SkImageFilter* input = this->getInput(i);
         if (input && !input->canComputeFastBounds()) {
             return false;
@@ -381,64 +366,43 @@ sk_sp<SkSpecialImage> SkImageFilter::onFilterImage(SkSpecialImage* src, const Co
     return SkSpecialImage::internal_fromBM(src->internal_getProxy(), resultBM, &src->props());
 }
 
-bool SkImageFilter::canFilterImageGPU() const {
-    return this->asFragmentProcessor(nullptr, nullptr, SkMatrix::I(), SkIRect());
-}
-
-bool SkImageFilter::filterImageGPUDeprecated(Proxy* proxy, const SkBitmap& src, const Context& ctx,
-                                             SkBitmap* result, SkIPoint* offset) const {
 #if SK_SUPPORT_GPU
-    SkBitmap input = src;
-    SkASSERT(fInputCount == 1);
-    SkIPoint srcOffset = SkIPoint::Make(0, 0);
-    if (!this->filterInputGPUDeprecated(0, proxy, src, ctx, &input, &srcOffset)) {
-        return false;
-    }
-    GrTexture* srcTexture = input.getTexture();
-    SkIRect bounds;
-    if (!this->applyCropRectDeprecated(ctx, proxy, input, &srcOffset, &bounds, &input)) {
-        return false;
-    }
-    GrContext* context = srcTexture->getContext();
+sk_sp<SkSpecialImage> SkImageFilter::DrawWithFP(GrContext* context,
+                                                sk_sp<GrFragmentProcessor> fp,
+                                                const SkIRect& bounds,
+                                                SkImageFilter::Proxy* proxy) {
+    GrPaint paint;
+    paint.addColorFragmentProcessor(fp.get());
+    paint.setPorterDuffXPFactory(SkXfermode::kSrc_Mode);
 
     GrSurfaceDesc desc;
-    desc.fFlags = kRenderTarget_GrSurfaceFlag,
+    desc.fFlags = kRenderTarget_GrSurfaceFlag;
     desc.fWidth = bounds.width();
     desc.fHeight = bounds.height();
     desc.fConfig = kRGBA_8888_GrPixelConfig;
 
-    SkAutoTUnref<GrTexture> dst(context->textureProvider()->createApproxTexture(desc));
+    sk_sp<GrTexture> dst(context->textureProvider()->createApproxTexture(desc));
     if (!dst) {
-        return false;
+        return nullptr;
     }
 
-    GrFragmentProcessor* fp;
-    offset->fX = bounds.left();
-    offset->fY = bounds.top();
-    bounds.offset(-srcOffset);
-    SkMatrix matrix(ctx.ctm());
-    matrix.postTranslate(SkIntToScalar(-bounds.left()), SkIntToScalar(-bounds.top()));
-    GrPaint paint;
-    // SRGBTODO: Don't handle sRGB here, in anticipation of this code path being deleted.
-    if (this->asFragmentProcessor(&fp, srcTexture, matrix, bounds)) {
-        SkASSERT(fp);
-        paint.addColorFragmentProcessor(fp)->unref();
-        paint.setPorterDuffXPFactory(SkXfermode::kSrc_Mode);
-
-        SkAutoTUnref<GrDrawContext> drawContext(context->drawContext(dst->asRenderTarget()));
-        if (drawContext) {
-            SkRect srcRect = SkRect::Make(bounds);
-            SkRect dstRect = SkRect::MakeWH(srcRect.width(), srcRect.height());
-            GrClip clip(dstRect);
-            drawContext->fillRectToRect(clip, paint, SkMatrix::I(), dstRect, srcRect);
-
-            GrWrapTextureInBitmap(dst, bounds.width(), bounds.height(), false, result);
-            return true;
-        }
+    sk_sp<GrDrawContext> drawContext(context->drawContext(dst->asRenderTarget()));
+    if (!drawContext) {
+        return nullptr;
     }
-#endif
-    return false;
+
+    SkRect srcRect = SkRect::Make(bounds);
+    SkRect dstRect = SkRect::MakeWH(srcRect.width(), srcRect.height());
+    GrClip clip(dstRect);
+    drawContext->fillRectToRect(clip, paint, SkMatrix::I(), dstRect, srcRect);
+
+    return SkSpecialImage::MakeFromGpu(proxy,
+                                       SkIRect::MakeWH(bounds.width(), bounds.height()),
+                                       kNeedNewImageUniqueID_SpecialImage,
+                                       dst.get());
+
 }
+#endif
 
 bool SkImageFilter::asAColorFilter(SkColorFilter** filterPtr) const {
     SkASSERT(nullptr != filterPtr);
@@ -518,8 +482,8 @@ sk_sp<SkSpecialImage> SkImageFilter::applyCropRect(const Context& ctx,
                                                    SkSpecialImage* src,
                                                    SkIPoint* srcOffset,
                                                    SkIRect* bounds) const {
-    SkIRect srcBounds;
-    srcBounds = SkIRect::MakeXYWH(srcOffset->fX, srcOffset->fY, src->width(), src->height());
+    const SkIRect srcBounds = SkIRect::MakeXYWH(srcOffset->x(), srcOffset->y(),
+                                                src->width(), src->height());
 
     SkIRect dstBounds = this->onFilterNodeBounds(srcBounds, ctx.ctm(), kForward_MapDirection);
     fCropRect.applyTo(dstBounds, ctx.ctm(), this->affectsTransparentBlack(), bounds);
@@ -541,12 +505,12 @@ sk_sp<SkSpecialImage> SkImageFilter::applyCropRect(const Context& ctx,
 
 SkIRect SkImageFilter::onFilterBounds(const SkIRect& src, const SkMatrix& ctm,
                                       MapDirection direction) const {
-    if (fInputCount < 1) {
+    if (this->countInputs() < 1) {
         return src;
     }
 
     SkIRect totalBounds;
-    for (int i = 0; i < fInputCount; ++i) {
+    for (int i = 0; i < this->countInputs(); ++i) {
         SkImageFilter* filter = this->getInput(i);
         SkIRect rect = filter ? filter->filterBounds(src, ctm, direction) : src;
         if (0 == i) {
@@ -568,11 +532,6 @@ SkImageFilter::Context SkImageFilter::mapContext(const Context& ctx) const {
     SkIRect clipBounds = this->onFilterNodeBounds(ctx.clipBounds(), ctx.ctm(),
                                                   MapDirection::kReverse_MapDirection);
     return Context(ctx.ctm(), clipBounds, ctx.cache());
-}
-
-bool SkImageFilter::asFragmentProcessor(GrFragmentProcessor**, GrTexture*,
-                                        const SkMatrix&, const SkIRect&) const {
-    return false;
 }
 
 sk_sp<SkImageFilter> SkImageFilter::MakeMatrixFilter(const SkMatrix& matrix,
@@ -600,14 +559,7 @@ sk_sp<SkSpecialImage> SkImageFilter::filterInput(int index,
 
     sk_sp<SkSpecialImage> result(input->filterImage(src, this->mapContext(ctx), offset));
 
-#if SK_SUPPORT_GPU
-    if (src->peekTexture() && result && !result->peekTexture()) {
-        // Keep the result on the GPU - this is still required for some
-        // image filters that don't support GPU in all cases
-        GrContext* context = src->peekTexture()->getContext();
-        return result->makeTextureImage(src->internal_getProxy(), context);
-    }
-#endif
+    SkASSERT(!result || src->isTextureBacked() == result->isTextureBacked());
 
     return result;
 }

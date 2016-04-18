@@ -487,11 +487,7 @@ protected:
         return new SkTypeface_AndroidStream(data, style, isFixedPitch, name);
     }
 
-
-    virtual SkTypeface* onLegacyCreateTypeface(const char familyName[],
-                                               unsigned styleBits) const override {
-        SkFontStyle style = SkFontStyle(styleBits);
-
+    SkTypeface* onLegacyCreateTypeface(const char familyName[], SkFontStyle style) const override {
         if (familyName) {
             // On Android, we must return nullptr when we can't find the requested
             // named typeface so that the system/app can provide their own recovery

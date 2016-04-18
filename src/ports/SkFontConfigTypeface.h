@@ -39,7 +39,7 @@ public:
         return fFamilyName.equals(name);
     }
 
-    static SkTypeface* LegacyCreateTypeface(const char familyName[], SkTypeface::Style);
+    static SkTypeface* LegacyCreateTypeface(const char familyName[], SkFontStyle);
 
 protected:
     FontConfigTypeface(const SkFontStyle& style,

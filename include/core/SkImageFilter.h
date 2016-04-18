@@ -17,6 +17,7 @@
 #include "SkRect.h"
 #include "SkSurfaceProps.h"
 
+class GrContext;
 class GrFragmentProcessor;
 class GrTexture;
 class SkBaseDevice;
@@ -181,7 +182,7 @@ public:
      *  The default implementation returns asFragmentProcessor(NULL, NULL, SkMatrix::I(),
      *  SkIRect()).
      */
-    virtual bool canFilterImageGPU() const;
+    virtual bool canFilterImageGPU() const { return false; }
 
     /**
      *  Process this image filter on the GPU.  This is most often used for
@@ -193,8 +194,18 @@ public:
      *  relative to the src when it is drawn. The default implementation does
      *  single-pass processing using asFragmentProcessor().
      */
-    virtual bool filterImageGPUDeprecated(Proxy*, const SkBitmap& src, const Context&,
-                                          SkBitmap* result, SkIPoint* offset) const;
+    virtual bool filterImageGPUDeprecated(Proxy*, const SkBitmap&, const Context&,
+                                          SkBitmap*, SkIPoint*) const {
+        SkASSERT(false);
+        return false;
+    }
+
+#if SK_SUPPORT_GPU
+    static sk_sp<SkSpecialImage> DrawWithFP(GrContext* context, 
+                                            sk_sp<GrFragmentProcessor> fp,
+                                            const SkIRect& bounds,
+                                            SkImageFilter::Proxy* proxy);
+#endif
 
     /**
      *  Returns whether this image filter is a color filter and puts the color filter into the
@@ -223,15 +234,15 @@ public:
      *  Returns the number of inputs this filter will accept (some inputs can
      *  be NULL).
      */
-    int countInputs() const { return fInputCount; }
+    int countInputs() const { return fInputs.count(); }
 
     /**
      *  Returns the input filter at a given index, or NULL if no input is
      *  connected.  The indices used are filter-specific.
      */
     SkImageFilter* getInput(int i) const {
-        SkASSERT(i < fInputCount);
-        return fInputs[i];
+        SkASSERT(i < fInputs.count());
+        return fInputs[i].get();
     }
 
     /**
@@ -321,12 +332,6 @@ protected:
 
         sk_sp<SkImageFilter>  getInput(int index) const { return fInputs[index]; }
 
-        // If the caller wants a copy of the inputs, call this and it will transfer ownership
-        // of the unflattened input filters to the caller. This is just a short-cut for copying
-        // the inputs, calling ref() on each, and then waiting for Common's destructor to call
-        // unref() on each.
-        void detachInputs(SkImageFilter** inputs);
-
     private:
         CropRect fCropRect;
         // most filters accept at most 2 input-filters
@@ -334,8 +339,6 @@ protected:
 
         void allocInputs(int count);
     };
-
-    SkImageFilter(int inputCount, SkImageFilter** inputs, const CropRect* cropRect = nullptr);
 
     SkImageFilter(sk_sp<SkImageFilter>* inputs, int inputCount, const CropRect* cropRect);
 
@@ -418,13 +421,12 @@ protected:
         return false;
     }
 
-    /** Given a "srcBounds" rect, computes destination bounds for this
-     *  destination bounds for this filter. "dstBounds" are computed by
-     *  transforming the crop rect by the context's CTM, applying it to the
-     *  initial bounds, and intersecting the result with the context's clip
-     *  bounds.  "srcBounds" (if non-null) are computed by intersecting the
-     *  initial bounds with "dstBounds", to ensure that we never sample
-     *  outside of the crop rect (this restriction may be relaxed in the
+    /** Given a "srcBounds" rect, computes destination bounds for this filter.
+     *  "dstBounds" are computed by transforming the crop rect by the context's
+     *  CTM, applying it to the initial bounds, and intersecting the result with
+     *  the context's clip bounds.  "srcBounds" (if non-null) are computed by
+     *  intersecting the initial bounds with "dstBounds", to ensure that we never
+     *  sample outside of the crop rect (this restriction may be relaxed in the
      *  future).
      */
     bool applyCropRect(const Context&, const SkIRect& srcBounds, SkIRect* dstBounds) const;
@@ -445,24 +447,6 @@ protected:
                                         SkIRect* bounds) const;
 
     /**
-     *  Returns true if the filter can be expressed a single-pass
-     *  GrProcessor, used to process this filter on the GPU, or false if
-     *  not.
-     *
-     *  If effect is non-NULL, a new GrProcessor instance is stored
-     *  in it.  The caller assumes ownership of the stage, and it is up to the
-     *  caller to unref it.
-     *
-     *  The effect can assume its vertexCoords space maps 1-to-1 with texels
-     *  in the texture.  "matrix" is a transformation to apply to filter
-     *  parameters before they are used in the effect. Note that this function
-     *  will be called with (NULL, NULL, SkMatrix::I()) to query for support,
-     *  so returning "true" indicates support for all possible matrices.
-     */
-    virtual bool asFragmentProcessor(GrFragmentProcessor**, GrTexture*, const SkMatrix&,
-                                     const SkIRect& bounds) const;
-
-    /**
      *  Creates a modified Context for use when recursing up the image filter DAG.
      *  The clip bounds are adjusted to accommodate any margins that this
      *  filter requires by calling this node's
@@ -474,20 +458,21 @@ private:
     friend class SkGraphics;
     static void PurgeCache();
 
+    void init(sk_sp<SkImageFilter>* inputs, int inputCount, const CropRect* cropRect);
     bool filterImageDeprecated(Proxy*, const SkBitmap& src, const Context&,
                                SkBitmap* result, SkIPoint* offset) const;
 
     bool usesSrcInput() const { return fUsesSrcInput; }
     virtual bool affectsTransparentBlack() const { return false; }
 
-    typedef SkFlattenable INHERITED;
-    int fInputCount;
-    SkImageFilter** fInputs;
+    SkAutoSTArray<2, sk_sp<SkImageFilter>> fInputs;
+
     bool fUsesSrcInput;
     CropRect fCropRect;
     uint32_t fUniqueID; // Globally unique
     mutable SkTArray<Cache::Key> fCacheKeys;
     mutable SkMutex fMutex;
+    typedef SkFlattenable INHERITED;
 };
 
 /**

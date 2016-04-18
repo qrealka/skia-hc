@@ -165,7 +165,7 @@ void GrStencilAndCoverTextContext::uncachedDrawTextBlob(GrContext* context,
         runPaint.setFlags(GrTextUtils::FilterTextFlags(props, runPaint));
 
         GrPaint grPaint;
-        if (!SkPaintToGrPaint(context, runPaint, viewMatrix, dc->allowSRGBInputs(), &grPaint)) {
+        if (!SkPaintToGrPaint(context, runPaint, viewMatrix, dc->isGammaCorrect(), &grPaint)) {
             return;
         }
 
@@ -220,7 +220,7 @@ void GrStencilAndCoverTextContext::drawTextBlob(GrContext* context, GrDrawContex
     }
 
     GrPaint paint;
-    if (!SkPaintToGrPaint(context, skPaint, viewMatrix, dc->allowSRGBInputs(), &paint)) {
+    if (!SkPaintToGrPaint(context, skPaint, viewMatrix, dc->isGammaCorrect(), &paint)) {
         return;
     }
 
@@ -539,10 +539,13 @@ GrPathRange* GrStencilAndCoverTextContext::TextRun::createGlyphs(GrContext* ctx)
             ctx->resourceProvider()->findAndRefResourceByUniqueKey(fGlyphPathsKey));
     if (nullptr == glyphs) {
         if (fUsingRawGlyphPaths) {
-            glyphs = ctx->resourceProvider()->createGlyphs(fFont.getTypeface(), nullptr, fStroke);
+            SkScalerContextEffects noeffects;
+            glyphs = ctx->resourceProvider()->createGlyphs(fFont.getTypeface(), noeffects,
+                                                           nullptr, fStroke);
         } else {
             SkGlyphCache* cache = this->getGlyphCache();
             glyphs = ctx->resourceProvider()->createGlyphs(cache->getScalerContext()->getTypeface(),
+                                                           cache->getScalerContext()->getEffects(),
                                                            &cache->getDescriptor(),
                                                            fStroke);
         }

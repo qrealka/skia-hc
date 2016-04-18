@@ -15,7 +15,7 @@
 #include "glsl/GrGLSLPrimitiveProcessor.h"
 #include "glsl/GrGLSLProgramDataManager.h"
 #include "glsl/GrGLSLUniformHandler.h"
-#include "glsl/GrGLSLTextureSampler.h"
+#include "glsl/GrGLSLSampler.h"
 #include "glsl/GrGLSLVertexShaderBuilder.h"
 #include "glsl/GrGLSLXferProcessor.h"
 
@@ -147,7 +147,13 @@ private:
                                 bool ignoresCoverage,
                                 GrPixelLocalStorageState plsState);
     void emitSamplers(const GrProcessor& processor,
-                      GrGLSLTextureSampler::TextureSamplerArray* outSamplers);
+                      GrGLSLSampler::SamplerArray* outTexSamplers,
+                      GrGLSLSampler::SamplerArray* outBufferSamplers);
+    void emitSampler(GrSLType samplerType,
+                     GrPixelConfig,
+                     const char* name,
+                     GrShaderFlags visibility,
+                     GrGLSLSampler::SamplerArray* outSamplers);
     void emitFSOutputSwizzle(bool hasSecondaryOutput);
     bool checkSamplerCounts();
 

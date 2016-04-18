@@ -318,10 +318,9 @@ protected:
         return stream.get() ? this->createFromStream(stream.release(), ttcIndex) : nullptr;
     }
 
-    SkTypeface* onLegacyCreateTypeface(const char familyName[],
-                                       unsigned styleBits) const override {
+    SkTypeface* onLegacyCreateTypeface(const char familyName[], SkFontStyle style) const override {
         FCLocker lock;
-        return FontConfigTypeface::LegacyCreateTypeface(familyName, (SkTypeface::Style)styleBits);
+        return FontConfigTypeface::LegacyCreateTypeface(familyName, style);
     }
 };
 

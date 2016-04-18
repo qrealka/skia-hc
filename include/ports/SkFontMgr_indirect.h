@@ -38,24 +38,23 @@ protected:
 
     SkFontStyleSet* onMatchFamily(const char familyName[]) const override;
 
-    virtual SkTypeface* onMatchFamilyStyle(const char familyName[],
-                                           const SkFontStyle& fontStyle) const override;
+    SkTypeface* onMatchFamilyStyle(const char familyName[],
+                                   const SkFontStyle& fontStyle) const override;
 
-    virtual SkTypeface* onMatchFamilyStyleCharacter(const char familyName[],
-                                                    const SkFontStyle&,
-                                                    const char* bcp47[],
-                                                    int bcp47Count,
-                                                    SkUnichar character) const override;
+    SkTypeface* onMatchFamilyStyleCharacter(const char familyName[],
+                                            const SkFontStyle&,
+                                            const char* bcp47[],
+                                            int bcp47Count,
+                                            SkUnichar character) const override;
 
-    virtual SkTypeface* onMatchFaceStyle(const SkTypeface* familyMember,
-                                         const SkFontStyle& fontStyle) const override;
+    SkTypeface* onMatchFaceStyle(const SkTypeface* familyMember,
+                                 const SkFontStyle& fontStyle) const override;
 
     SkTypeface* onCreateFromStream(SkStreamAsset* stream, int ttcIndex) const override;
     SkTypeface* onCreateFromFile(const char path[], int ttcIndex) const override;
     SkTypeface* onCreateFromData(SkData* data, int ttcIndex) const override;
 
-    virtual SkTypeface* onLegacyCreateTypeface(const char familyName[],
-                                               unsigned styleBits) const override;
+    SkTypeface* onLegacyCreateTypeface(const char familyName[], SkFontStyle) const override;
 
 private:
     SkTypeface* createTypefaceFromFontId(const SkFontIdentity& fontId) const;

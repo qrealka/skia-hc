@@ -144,15 +144,13 @@ SkGpuDevice* SkGpuDevice::Create(GrRenderTarget* rt, int width, int height,
 
 SkGpuDevice* SkGpuDevice::Create(GrContext* context, SkBudgeted budgeted,
                                  const SkImageInfo& info, int sampleCount,
-                                 const SkSurfaceProps* props, InitContents init,
-                                 GrTextureStorageAllocator customAllocator) {
+                                 const SkSurfaceProps* props, InitContents init) {
     unsigned flags;
     if (!CheckAlphaTypeAndGetFlags(&info, init, &flags)) {
         return nullptr;
     }
 
-    SkAutoTUnref<GrRenderTarget> rt(CreateRenderTarget(
-            context, budgeted, info, sampleCount, customAllocator));
+    SkAutoTUnref<GrRenderTarget> rt(CreateRenderTarget(context, budgeted, info, sampleCount));
     if (nullptr == rt) {
         return nullptr;
     }
@@ -179,9 +177,8 @@ SkGpuDevice::SkGpuDevice(GrRenderTarget* rt, int width, int height,
     }
 }
 
-GrRenderTarget* SkGpuDevice::CreateRenderTarget(
-        GrContext* context, SkBudgeted budgeted, const SkImageInfo& origInfo,
-        int sampleCount, GrTextureStorageAllocator textureStorageAllocator) {
+GrRenderTarget* SkGpuDevice::CreateRenderTarget(GrContext* context, SkBudgeted budgeted,
+                                                const SkImageInfo& origInfo, int sampleCount) {
     if (kUnknown_SkColorType == origInfo.colorType() ||
         origInfo.width() < 0 || origInfo.height() < 0) {
         return nullptr;
@@ -194,15 +191,19 @@ GrRenderTarget* SkGpuDevice::CreateRenderTarget(
     SkColorType ct = origInfo.colorType();
     SkAlphaType at = origInfo.alphaType();
     SkColorProfileType pt = origInfo.profileType();
-    if (kRGB_565_SkColorType == ct) {
+    if (kRGB_565_SkColorType == ct || kGray_8_SkColorType == ct) {
         at = kOpaque_SkAlphaType;  // force this setting
-    } else if (ct != kBGRA_8888_SkColorType && ct != kRGBA_8888_SkColorType) {
-        // Fall back from whatever ct was to default of kRGBA or kBGRA which is aliased as kN32
-        ct = kN32_SkColorType;
     }
     if (kOpaque_SkAlphaType != at) {
         at = kPremul_SkAlphaType;  // force this setting
     }
+
+    GrPixelConfig origConfig = SkImageInfo2GrPixelConfig(ct, at, pt, *context->caps());
+    if (!context->caps()->isConfigRenderable(origConfig, sampleCount > 0)) {
+        // Fall back from whatever ct was to default of kRGBA or kBGRA which is aliased as kN32
+        ct = kN32_SkColorType;
+    }
+
     const SkImageInfo info = SkImageInfo::Make(origInfo.width(), origInfo.height(), ct, at, pt);
 
     GrSurfaceDesc desc;
@@ -211,7 +212,6 @@ GrRenderTarget* SkGpuDevice::CreateRenderTarget(
     desc.fHeight = info.height();
     desc.fConfig = SkImageInfo2GrPixelConfig(info, *context->caps());
     desc.fSampleCnt = sampleCount;
-    desc.fTextureStorageAllocator = textureStorageAllocator;
     desc.fIsMipMapped = false;
     GrTexture* texture = context->textureProvider()->createTexture(desc, budgeted, nullptr, 0);
     if (nullptr == texture) {
@@ -359,8 +359,7 @@ void SkGpuDevice::replaceRenderTarget(bool shouldRetainContent) {
     SkBudgeted budgeted = fRenderTarget->resourcePriv().isBudgeted();
 
     SkAutoTUnref<GrRenderTarget> newRT(CreateRenderTarget(
-        this->context(), budgeted, this->imageInfo(), fRenderTarget->desc().fSampleCnt,
-        fRenderTarget->desc().fTextureStorageAllocator));
+        this->context(), budgeted, this->imageInfo(), fRenderTarget->desc().fSampleCnt));
 
     if (nullptr == newRT) {
         return;
@@ -397,7 +396,7 @@ void SkGpuDevice::drawPaint(const SkDraw& draw, const SkPaint& paint) {
 
     GrPaint grPaint;
     if (!SkPaintToGrPaint(this->context(), paint, *draw.fMatrix,
-                          this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                          this->surfaceProps().isGammaCorrect(), &grPaint)) {
         return;
     }
 
@@ -448,7 +447,7 @@ void SkGpuDevice::drawPoints(const SkDraw& draw, SkCanvas::PointMode mode,
         GrStrokeInfo strokeInfo(paint, SkPaint::kStroke_Style);
         GrPaint grPaint;
         if (!SkPaintToGrPaint(this->context(), paint, *draw.fMatrix,
-                              this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                              this->surfaceProps().isGammaCorrect(), &grPaint)) {
             return;
         }
         SkPath path;
@@ -469,7 +468,7 @@ void SkGpuDevice::drawPoints(const SkDraw& draw, SkCanvas::PointMode mode,
 
     GrPaint grPaint;
     if (!SkPaintToGrPaint(this->context(), paint, *draw.fMatrix,
-                          this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                          this->surfaceProps().isGammaCorrect(), &grPaint)) {
         return;
     }
 
@@ -522,7 +521,7 @@ void SkGpuDevice::drawRect(const SkDraw& draw, const SkRect& rect, const SkPaint
 
     GrPaint grPaint;
     if (!SkPaintToGrPaint(this->context(), paint, *draw.fMatrix,
-                          this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                          this->surfaceProps().isGammaCorrect(), &grPaint)) {
         return;
     }
 
@@ -541,7 +540,7 @@ void SkGpuDevice::drawRRect(const SkDraw& draw, const SkRRect& rect,
 
     GrPaint grPaint;
     if (!SkPaintToGrPaint(this->context(), paint, *draw.fMatrix,
-                          this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                          this->surfaceProps().isGammaCorrect(), &grPaint)) {
         return;
     }
 
@@ -617,7 +616,7 @@ void SkGpuDevice::drawDRRect(const SkDraw& draw, const SkRRect& outer,
     if (stroke.isFillStyle() && !paint.getMaskFilter() && !paint.getPathEffect()) {
         GrPaint grPaint;
         if (!SkPaintToGrPaint(this->context(), paint, *draw.fMatrix,
-                              this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                              this->surfaceProps().isGammaCorrect(), &grPaint)) {
             return;
         }
 
@@ -662,7 +661,7 @@ void SkGpuDevice::drawOval(const SkDraw& draw, const SkRect& oval, const SkPaint
 
     GrPaint grPaint;
     if (!SkPaintToGrPaint(this->context(), paint, *draw.fMatrix,
-                          this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                          this->surfaceProps().isGammaCorrect(), &grPaint)) {
         return;
     }
 
@@ -1147,7 +1146,7 @@ void SkGpuDevice::internalDrawBitmap(const SkBitmap& bitmap,
     GrPaint grPaint;
     if (!SkPaintToGrPaintWithTexture(this->context(), paint, viewMatrix, fp,
                                      kAlpha_8_SkColorType == bitmap.colorType(),
-                                     this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                                     this->surfaceProps().isGammaCorrect(), &grPaint)) {
         return;
     }
 
@@ -1242,7 +1241,7 @@ void SkGpuDevice::drawSprite(const SkDraw& draw, const SkBitmap& bitmap,
         fp.reset(GrFragmentProcessor::MulOutputByInputAlpha(fp));
     }
     if (!SkPaintToGrPaintReplaceShader(this->context(), paint, fp,
-                                       this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                                       this->surfaceProps().isGammaCorrect(), &grPaint)) {
         return;
     }
 
@@ -1403,7 +1402,7 @@ void SkGpuDevice::drawDevice(const SkDraw& draw, SkBaseDevice* device,
     }
 
     if (!SkPaintToGrPaintReplaceShader(this->context(), paint, fp,
-                                       this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                                       this->surfaceProps().isGammaCorrect(), &grPaint)) {
         return;
     }
 
@@ -1543,7 +1542,7 @@ void SkGpuDevice::drawProducerNine(const SkDraw& draw, GrTextureProducer* produc
     GrPaint grPaint;
     if (!SkPaintToGrPaintWithTexture(this->context(), paint, *draw.fMatrix, fp,
                                      producer->isAlphaOnly(),
-                                     this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                                     this->surfaceProps().isGammaCorrect(), &grPaint)) {
         return;
     }
 
@@ -1611,7 +1610,7 @@ void SkGpuDevice::drawVertices(const SkDraw& draw, SkCanvas::VertexMode vmode,
         GrPaint grPaint;
         // we ignore the shader if texs is null.
         if (!SkPaintToGrPaintNoShader(this->context(), copy,
-                                      this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                                      this->surfaceProps().isGammaCorrect(), &grPaint)) {
             return;
         }
 
@@ -1683,14 +1682,14 @@ void SkGpuDevice::drawVertices(const SkDraw& draw, SkCanvas::VertexMode vmode,
                 colorMode = SkXfermode::kModulate_Mode;
             }
             if (!SkPaintToGrPaintWithXfermode(this->context(), paint, *draw.fMatrix, colorMode,
-                                              false, this->surfaceProps().allowSRGBInputs(),
+                                              false, this->surfaceProps().isGammaCorrect(),
                                               &grPaint)) {
                 return;
             }
         } else {
             // We have a shader, but no colors to blend it against.
             if (!SkPaintToGrPaint(this->context(), paint, *draw.fMatrix,
-                                  this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                                  this->surfaceProps().isGammaCorrect(), &grPaint)) {
                 return;
             }
         }
@@ -1699,14 +1698,14 @@ void SkGpuDevice::drawVertices(const SkDraw& draw, SkCanvas::VertexMode vmode,
             // We have colors, but either have no shader or no texture coords (which implies that
             // we should ignore the shader).
             if (!SkPaintToGrPaintWithPrimitiveColor(this->context(), paint,
-                                                    this->surfaceProps().allowSRGBInputs(),
+                                                    this->surfaceProps().isGammaCorrect(),
                                                     &grPaint)) {
                 return;
             }
         } else {
             // No colors and no shaders. Just draw with the paint color.
             if (!SkPaintToGrPaintNoShader(this->context(), paint,
-                                          this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                                          this->surfaceProps().isGammaCorrect(), &grPaint)) {
                 return;
             }
         }
@@ -1744,12 +1743,12 @@ void SkGpuDevice::drawAtlas(const SkDraw& draw, const SkImage* atlas, const SkRS
     GrPaint grPaint;
     if (colors) {
         if (!SkPaintToGrPaintWithXfermode(this->context(), p, *draw.fMatrix, mode, true,
-                                          this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                                          this->surfaceProps().isGammaCorrect(), &grPaint)) {
             return;
         }
     } else {
         if (!SkPaintToGrPaint(this->context(), p, *draw.fMatrix,
-                              this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                              this->surfaceProps().isGammaCorrect(), &grPaint)) {
             return;
         }
     }
@@ -1769,7 +1768,7 @@ void SkGpuDevice::drawText(const SkDraw& draw, const void* text,
 
     GrPaint grPaint;
     if (!SkPaintToGrPaint(this->context(), paint, *draw.fMatrix,
-                          this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                          this->surfaceProps().isGammaCorrect(), &grPaint)) {
         return;
     }
 
@@ -1788,7 +1787,7 @@ void SkGpuDevice::drawPosText(const SkDraw& draw, const void* text, size_t byteL
 
     GrPaint grPaint;
     if (!SkPaintToGrPaint(this->context(), paint, *draw.fMatrix,
-                          this->surfaceProps().allowSRGBInputs(), &grPaint)) {
+                          this->surfaceProps().isGammaCorrect(), &grPaint)) {
         return;
     }
 

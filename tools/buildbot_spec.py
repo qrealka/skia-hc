@@ -24,6 +24,7 @@ import dm_flags
 import nanobench_flags
 
 
+CONFIG_COVERAGE = 'Coverage'
 CONFIG_DEBUG = 'Debug'
 CONFIG_RELEASE = 'Release'
 
@@ -160,13 +161,21 @@ def gyp_defines(builder_dict):
       builder_dict.get('role') == 'Perf'):
       gyp_defs['skia_dump_stats'] = '1'
 
+  # CommandBuffer.
+  if builder_dict.get('extra_config') == 'CommandBuffer':
+    gyp_defs['skia_command_buffer'] = '1'
+
+  # Vulkan.
+  if builder_dict.get('extra_config') == 'Vulkan':
+    gyp_defs['skia_vulkan'] = '1'
+
   return gyp_defs
 
 
 cov_skip.extend([lineno(), lineno() + 1])
 def get_extra_env_vars(builder_dict):
   env = {}
-  if builder_dict.get('configuration') == 'Coverage':
+  if builder_dict.get('configuration') == CONFIG_COVERAGE:
     # We have to use Clang 3.6 because earlier versions do not support the
     # compile flags we use and 3.7 and 3.8 hit asserts during compilation.
     env['CC'] = '/usr/bin/clang-3.6'
@@ -303,6 +312,8 @@ def get_builder_spec(builder_name):
   if ('Win' in builder_dict.get('os', '') and arch == 'x86_64'):
     configuration += '_x64'
   rv['configuration'] = configuration
+  if configuration == CONFIG_COVERAGE:
+    rv['do_compile_steps'] = False
   rv['do_test_steps'] = role == builder_name_schema.BUILDER_ROLE_TEST
   rv['do_perf_steps'] = (role == builder_name_schema.BUILDER_ROLE_PERF or
                          (role == builder_name_schema.BUILDER_ROLE_TEST and
@@ -365,6 +376,7 @@ def self_test():
         'Test-Android-GCC-Nexus6-GPU-Adreno420-Arm7-Debug',
         'Test-ChromeOS-GCC-Link-CPU-AVX-x86_64-Debug',
         'Test-iOS-Clang-iPad4-GPU-SGX554-Arm7-Debug',
+        'Test-Mac-Clang-MacMini6.2-GPU-HD4000-x86_64-Debug-CommandBuffer',
         'Test-Mac10.8-Clang-MacMini4.1-GPU-GeForce320M-x86_64-Release',
         'Test-Ubuntu-Clang-GCE-CPU-AVX2-x86_64-Coverage',
         ('Test-Ubuntu-GCC-GCE-CPU-AVX2-x86_64-Release-'
@@ -373,6 +385,7 @@ def self_test():
         'Test-Ubuntu-GCC-GCE-CPU-AVX2-x86_64-Release-Fast',
         'Test-Ubuntu-GCC-GCE-CPU-AVX2-x86_64-Release-Shared',
         'Test-Ubuntu-GCC-ShuttleA-GPU-GTX550Ti-x86_64-Release-Valgrind',
+        'Test-Win10-MSVC-ShuttleA-GPU-GTX660-x86_64-Debug-Vulkan',
         'Test-Win8-MSVC-ShuttleB-GPU-HD4600-x86-Release-ANGLE',
         'Test-Win8-MSVC-ShuttleA-CPU-AVX-x86_64-Debug',
   ]

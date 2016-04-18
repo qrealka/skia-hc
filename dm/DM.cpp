@@ -870,7 +870,6 @@ static Sink* create_via(const SkString& tag, Sink* wrapped) {
     VIA("sp",        ViaSingletonPictures, wrapped);
     VIA("tiles",     ViaTiles, 256, 256, nullptr,            wrapped);
     VIA("tiles_rt",  ViaTiles, 256, 256, new SkRTreeFactory, wrapped);
-    VIA("mojo",      ViaMojo,             wrapped);
 
     if (FLAGS_matrix.count() == 4) {
         SkMatrix m;
@@ -959,7 +958,12 @@ static bool dump_png(SkBitmap bitmap, const char* path, const char* md5) {
             return false;
         }
         for (int i = 0; i < w*h; i++) {
-            Sk4f fs = SkHalfToFloat_01(px[i]);    // Convert up to linear floats.
+            // Convert up to linear floats.
+            Sk4f fs(SkHalfToFloat(static_cast<SkHalf>(px[i] >> (0 * 16))),
+                    SkHalfToFloat(static_cast<SkHalf>(px[i] >> (1 * 16))),
+                    SkHalfToFloat(static_cast<SkHalf>(px[i] >> (2 * 16))),
+                    SkHalfToFloat(static_cast<SkHalf>(px[i] >> (3 * 16))));
+            fs = Sk4f::Max(0.0f, Sk4f::Min(fs, 1.0f));  // Clamp
             float invA = 1.0f / fs[3];
             fs = fs * Sk4f(invA, invA, invA, 1);  // Unpremultiply.
             rgba[i] = Sk4f_toS32(fs);             // Pack down to sRGB bytes.
@@ -1347,7 +1351,6 @@ int dm_main() {
     }
     gather_sinks();
     gather_tests();
-
     gPending = gSrcs.count() * gSinks.count() + gParallelTests.count() + gSerialTests.count();
     info("%d srcs * %d sinks + %d tests == %d tasks",
          gSrcs.count(), gSinks.count(), gParallelTests.count() + gSerialTests.count(), gPending);
@@ -1420,6 +1423,9 @@ namespace skiatest {
 bool IsGLContextType(sk_gpu_test::GrContextFactory::ContextType type) {
     return kOpenGL_GrBackend == GrContextFactory::ContextTypeBackend(type);
 }
+bool IsVulkanContextType(sk_gpu_test::GrContextFactory::ContextType type) {
+    return kVulkan_GrBackend == GrContextFactory::ContextTypeBackend(type);
+}
 bool IsRenderingGLContextType(sk_gpu_test::GrContextFactory::ContextType type) {
     return IsGLContextType(type) && GrContextFactory::IsRenderingContext(type);
 }
@@ -1428,6 +1434,7 @@ bool IsNullGLContextType(sk_gpu_test::GrContextFactory::ContextType type) {
 }
 #else
 bool IsGLContextType(int) { return false; }
+bool IsVulkanContextType(int) { return false; }
 bool IsRenderingGLContextType(int) { return false; }
 bool IsNullGLContextType(int) { return false; }
 #endif
@@ -1439,7 +1446,7 @@ void RunWithGPUTestContexts(GrContextTestFn* test, GrContextTypeFilterFn* contex
     for (int typeInt = 0; typeInt < GrContextFactory::kContextTypeCnt; ++typeInt) {
         GrContextFactory::ContextType contextType = (GrContextFactory::ContextType) typeInt;
         ContextInfo ctxInfo = factory->getContextInfo(contextType);
-        if (!(*contextTypeFilter)(contextType)) {
+        if (contextTypeFilter && !(*contextTypeFilter)(contextType)) {
             continue;
         }
         // Use "native" instead of explicitly trying OpenGL and OpenGL ES. Do not use GLES on,

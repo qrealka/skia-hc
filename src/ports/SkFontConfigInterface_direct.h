@@ -18,10 +18,11 @@ public:
     ~SkFontConfigInterfaceDirect() override;
 
     bool matchFamilyName(const char familyName[],
-                         SkTypeface::Style requested,
+                         SkFontStyle requested,
                          FontIdentity* outFontIdentifier,
                          SkString* outFamilyName,
-                         SkTypeface::Style* outStyle) override;
+                         SkFontStyle* outStyle) override;
+
     SkStreamAsset* openStream(const FontIdentity&) override;
 
     // new APIs

@@ -13,6 +13,8 @@
   'variables': {
     'skgpu_sources': [
       '<(skia_include_path)/gpu/GrBlend.h',
+      '<(skia_include_path)/gpu/GrBuffer.h',
+      '<(skia_include_path)/gpu/GrBufferAccess.h',
       '<(skia_include_path)/gpu/GrCaps.h',
       '<(skia_include_path)/gpu/GrClip.h',
       '<(skia_include_path)/gpu/GrColor.h',
@@ -72,7 +74,6 @@
       '<(skia_src_path)/gpu/GrBlend.cpp',
       '<(skia_src_path)/gpu/GrBlurUtils.cpp',
       '<(skia_src_path)/gpu/GrBlurUtils.h',
-      '<(skia_src_path)/gpu/GrBuffer.h',
       '<(skia_src_path)/gpu/GrBufferAllocPool.cpp',
       '<(skia_src_path)/gpu/GrBufferAllocPool.h',
       '<(skia_src_path)/gpu/GrCaps.cpp',
@@ -390,10 +391,10 @@
       '<(skia_src_path)/gpu/glsl/GrGLSLProgramBuilder.h',
       '<(skia_src_path)/gpu/glsl/GrGLSLProgramDataManager.cpp',
       '<(skia_src_path)/gpu/glsl/GrGLSLProgramDataManager.h',
+      '<(skia_src_path)/gpu/glsl/GrGLSLSampler.h',
       '<(skia_src_path)/gpu/glsl/GrGLSLShaderBuilder.cpp',
       '<(skia_src_path)/gpu/glsl/GrGLSLShaderBuilder.h',
       '<(skia_src_path)/gpu/glsl/GrGLSLShaderVar.h',
-      '<(skia_src_path)/gpu/glsl/GrGLSLTextureSampler.h',
       '<(skia_src_path)/gpu/glsl/GrGLSLUniformHandler.h',
       '<(skia_src_path)/gpu/glsl/GrGLSLUtil.cpp',
       '<(skia_src_path)/gpu/glsl/GrGLSLUtil.h',

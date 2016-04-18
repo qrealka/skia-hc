@@ -420,22 +420,6 @@ static SkFontStyle fontstyle_from_descriptor(CTFontDescriptorRef desc) {
                        : SkFontStyle::kUpright_Slant);
 }
 
-static SkTypeface::Style computeStyleBits(CTFontRef font, bool* isFixedPitch) {
-    unsigned style = SkTypeface::kNormal;
-    CTFontSymbolicTraits traits = CTFontGetSymbolicTraits(font);
-
-    if (traits & kCTFontBoldTrait) {
-        style |= SkTypeface::kBold;
-    }
-    if (traits & kCTFontItalicTrait) {
-        style |= SkTypeface::kItalic;
-    }
-    if (isFixedPitch) {
-        *isFixedPitch = (traits & kCTFontMonoSpaceTrait) != 0;
-    }
-    return (SkTypeface::Style)style;
-}
-
 #define WEIGHT_THRESHOLD    ((SkFontStyle::kNormal_Weight + SkFontStyle::kBold_Weight)/2)
 
 // kCTFontColorGlyphsTrait was added in the Mac 10.7 and iPhone 4.3 SDKs.
@@ -473,7 +457,8 @@ protected:
     int onGetTableTags(SkFontTableTag tags[]) const override;
     virtual size_t onGetTableData(SkFontTableTag, size_t offset,
                                   size_t length, void* data) const override;
-    SkScalerContext* onCreateScalerContext(const SkDescriptor*) const override;
+    SkScalerContext* onCreateScalerContext(const SkScalerContextEffects&,
+                                           const SkDescriptor*) const override;
     void onFilterRec(SkScalerContextRec*) const override;
     void onGetFontDescriptor(SkFontDescriptor*, bool*) const override;
     virtual SkAdvancedTypefaceMetrics* onGetAdvancedTypefaceMetrics(
@@ -492,13 +477,16 @@ private:
 /** Creates a typeface without searching the cache. Takes ownership of the CTFontRef. */
 static SkTypeface* NewFromFontRef(CTFontRef fontRef, CFTypeRef resourceRef, bool isLocalStream) {
     SkASSERT(fontRef);
-    bool isFixedPitch;
-    SkFontStyle style = SkFontStyle(computeStyleBits(fontRef, &isFixedPitch));
 
+    AutoCFRelease<CTFontDescriptorRef> desc(CTFontCopyFontDescriptor(fontRef));
+    SkFontStyle style = fontstyle_from_descriptor(desc);
+
+    CTFontSymbolicTraits traits = CTFontGetSymbolicTraits(fontRef);
+    bool isFixedPitch = SkToBool(traits & kCTFontMonoSpaceTrait);
     return new SkTypeface_Mac(fontRef, resourceRef, style, isFixedPitch, isLocalStream);
 }
 
-static bool find_by_CTFontRef(SkTypeface* cached, const SkFontStyle&, void* context) {
+static bool find_by_CTFontRef(SkTypeface* cached, void* context) {
     CTFontRef self = (CTFontRef)context;
     CTFontRef other = ((SkTypeface_Mac*)cached)->fFontRef;
 
@@ -558,7 +546,7 @@ static SkTypeface* NewFromName(const char familyName[], const SkFontStyle& theSt
         return face;
     }
     face = NewFromFontRef(ctFont.release(), nullptr, false);
-    SkTypefaceCache::Add(face, face->fontStyle());
+    SkTypefaceCache::Add(face);
     return face;
 }
 
@@ -595,7 +583,7 @@ SkTypeface* SkCreateTypefaceFromCTFont(CTFontRef fontRef, CFTypeRef resourceRef)
         CFRetain(resourceRef);
     }
     face = NewFromFontRef(fontRef, resourceRef, false);
-    SkTypefaceCache::Add(face, face->fontStyle());
+    SkTypefaceCache::Add(face);
     return face;
 }
 
@@ -629,7 +617,7 @@ struct GlyphRect {
 
 class SkScalerContext_Mac : public SkScalerContext {
 public:
-    SkScalerContext_Mac(SkTypeface_Mac*, const SkDescriptor*);
+    SkScalerContext_Mac(SkTypeface_Mac*, const SkScalerContextEffects&, const SkDescriptor*);
 
 protected:
     unsigned generateGlyphCount(void) override;
@@ -738,8 +726,9 @@ static CTFontRef ctfont_create_exact_copy(CTFontRef baseFont, CGFloat textSize,
 }
 
 SkScalerContext_Mac::SkScalerContext_Mac(SkTypeface_Mac* typeface,
+                                         const SkScalerContextEffects& effects,
                                          const SkDescriptor* desc)
-        : INHERITED(typeface, desc)
+        : INHERITED(typeface, effects, desc)
         , fFBoundingBoxes()
         , fFBoundingBoxesGlyphOffset(0)
         , fGeneratedFBoundingBoxes(false)
@@ -1937,8 +1926,9 @@ size_t SkTypeface_Mac::onGetTableData(SkFontTableTag tag, size_t offset,
     return length;
 }
 
-SkScalerContext* SkTypeface_Mac::onCreateScalerContext(const SkDescriptor* desc) const {
-    return new SkScalerContext_Mac(const_cast<SkTypeface_Mac*>(this), desc);
+SkScalerContext* SkTypeface_Mac::onCreateScalerContext(const SkScalerContextEffects& effects,
+                                                       const SkDescriptor* desc) const {
+    return new SkScalerContext_Mac(const_cast<SkTypeface_Mac*>(this), effects, desc);
 }
 
 void SkTypeface_Mac::onFilterRec(SkScalerContextRec* rec) const {
@@ -2176,7 +2166,7 @@ static SkTypeface* createFromDesc(CTFontDescriptorRef desc) {
     }
 
     face = NewFromFontRef(ctFont.release(), nullptr, false);
-    SkTypefaceCache::Add(face, face->fontStyle());
+    SkTypefaceCache::Add(face);
     return face;
 }
 
@@ -2569,10 +2559,7 @@ protected:
         return create_from_dataProvider(pr);
     }
 
-    virtual SkTypeface* onLegacyCreateTypeface(const char familyName[],
-                                               unsigned styleBits) const override {
-
-        SkFontStyle style = SkFontStyle((SkTypeface::Style)styleBits);
+    SkTypeface* onLegacyCreateTypeface(const char familyName[], SkFontStyle style) const override {
         if (familyName) {
             familyName = map_css_names(familyName);
         }

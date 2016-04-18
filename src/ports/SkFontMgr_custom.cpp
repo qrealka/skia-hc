@@ -308,15 +308,7 @@ protected:
         return stream.get() ? this->createFromStream(stream.release(), ttcIndex) : nullptr;
     }
 
-    SkTypeface* onLegacyCreateTypeface(const char familyName[], unsigned styleBits) const override {
-        SkTypeface::Style oldStyle = (SkTypeface::Style)styleBits;
-        SkFontStyle style = SkFontStyle(oldStyle & SkTypeface::kBold
-                                                 ? SkFontStyle::kBold_Weight
-                                                 : SkFontStyle::kNormal_Weight,
-                                        SkFontStyle::kNormal_Width,
-                                        oldStyle & SkTypeface::kItalic
-                                                 ? SkFontStyle::kItalic_Slant
-                                                 : SkFontStyle::kUpright_Slant);
+    SkTypeface* onLegacyCreateTypeface(const char familyName[], SkFontStyle style) const override {
         SkTypeface* tf = nullptr;
 
         if (familyName) {
