@@ -10,6 +10,7 @@ if (NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE Release)
 endif ()
 
+# we don't need this option for static libraries
 if(NOT(CMAKE_VERSION LESS 3.4) AND MSVC)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
     message( STATUS "CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS: ${CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS}" )
@@ -41,6 +42,7 @@ list (APPEND public_includes ${userconfig_directory})
 # These guys are third_party but provided by a Skia checkout.
 list (APPEND srcs             ../third_party/etc1/etc1.cpp ../third_party/ktx/ktx.cpp)
 list (APPEND private_includes ../third_party/etc1          ../third_party/ktx)
+list (APPEND private_includes ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 function (remove_srcs)
     file (GLOB_RECURSE to_remove ${ARGN})
@@ -48,6 +50,7 @@ function (remove_srcs)
     set (srcs ${srcs} PARENT_SCOPE)
 endfunction()
 
+# TODO: after create ExternalProjects for all DEPS we can comment 'remove_src' force_link sources
 # This file is empty and is only used to trick GYP.
 remove_srcs (../src/core/SkForceCPlusPlusLinking.cpp)
 # This file forces linking for all our supported image decoders.  We're more fine-grained.
@@ -164,7 +167,7 @@ find_library (WEBP_LIBRARIES webp)
 find_path (OSMESA_INCLUDE_DIRS "GL/osmesa.h")
 find_library(OSMESA_LIBRARIES "OSMesa")
 
-if (UNIX AND NOT APPLE)
+if (NOT APPLE)
     find_package (Freetype)
     # Same deal for fontconfig.
     find_path (FONTCONFIG_INCLUDE_DIRS "fontconfig/fontconfig.h")
@@ -212,18 +215,6 @@ else()
     remove_srcs(../src/utils/*Lua*)
 endif()
 
-if (PNG_FOUND)
-    list (APPEND private_includes ${PNG_INCLUDE_DIRS})
-    list (APPEND libs             ${PNG_LIBRARIES})
-    add_definitions(-DPNG_SKIP_SETJMP_CHECK)
-    add_definitions(-DPNG_SKIP_SKIA_OPTS)
-    add_definitions(-DSK_CODEC_DECODES_PNG)
-else()
-    remove_srcs(../src/images/*PNG*)
-    remove_srcs(../src/codec/*Png*)
-    remove_srcs(../src/codec/*Ico*)
-endif()
-
 if (NOT ZLIB_FOUND)
     message( STATUS "Will build ZLIB from external sources" )
 
@@ -243,11 +234,10 @@ if (NOT ZLIB_FOUND)
                                       -DCMAKE_COMPILER_IS_GNUCXX=${CMAKE_COMPILER_IS_GNUCXX}
                                       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                                       -DCMAKE_C_FLAGS=${GL_BINDING_C_FLAGS}
+                                      -DBUILD_SHARED_LIBS=FALSE
     )
     
     set(ZLIB_FOUND TRUE)
-    set(ZLIB_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include)    
-    set(ZLIB_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
     
     add_library(ZLibStatic STATIC IMPORTED GLOBAL)
     add_dependencies(ZLibStatic external_zlib)
@@ -262,16 +252,73 @@ if (NOT ZLIB_FOUND)
         set_target_properties(ZLibStatic PROPERTIES
                             IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/lib/libz.a
                           LINKER_LANGUAGE C)
-    
     endif()
 
-    set(ZLIB_LIBRARIES ZLibStatic) 
-    #list(APPEND skia_dependecies ZLibStatic)
+    list (APPEND libs ZLibStatic)
+    #list (APPEND skia_dependecies external_zlib)
+else()    
+    list (APPEND libs ${ZLIB_LIBRARIES})
+    list (APPEND private_includes ${ZLIB_INCLUDE_DIRS})
 endif()
 
-list (APPEND libs ${ZLIB_LIBRARIES})
-list (APPEND private_includes ${ZLIB_INCLUDE_DIRS})
 remove_srcs(../src/pdf/SkDocument_PDF_None.cpp)
+
+if (NOT PNG_FOUND)
+    message( STATUS "Will build PNG from external sources" )
+    
+    set( libpng_source_path ${CMAKE_CURRENT_BINARY_DIR}/external/libpng/src/external_libpng/ )
+    set( libpng_cmake_file_path ${libpng_source_path}/CMakeLists.txt )    
+    
+    ExternalProject_Add( external_libpng
+    DEPENDS           external_zlib
+    PREFIX            ${CMAKE_CURRENT_BINARY_DIR}/external/libpng
+    INSTALL_DIR       ${CMAKE_CURRENT_BINARY_DIR}
+    # http://www.libpng.org/pub/png/libpng.html
+    #URL ftp://ftp.simplesystems.org/pub/libpng/png/src/libpng16/lpng1621.zip
+    URL http://download.sourceforge.net/libpng/lpng1621.zip
+    #GIT_REPOSITORY    git://git.code.sf.net/p/libpng/code
+    #GIT_TAG           v1.6.9
+    CMAKE_ARGS          -DPNG_SHARED=off
+                        -DPNG_STATIC=on
+                        -DPNG_TESTS=off
+                        -DPNG_DEBUG=off
+                        -DPNGARG=off
+                        -DBUILD_SHARED_LIBS=FALSE
+                        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
+                        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+                        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+                        -DCMAKE_COMPILER_IS_GNUCXX=${CMAKE_COMPILER_IS_GNUCXX}
+                        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                        -DCMAKE_C_FLAGS=${GL_BINDING_C_FLAGS}
+    )
+    
+    set(PNG_FOUND TRUE)
+    add_library(libpng STATIC IMPORTED GLOBAL)
+    add_dependencies(libpng external_zlib external_libpng)
+    if(MSVC)
+        set_target_properties(libpng PROPERTIES
+                            IMPORTED_LOCATION_DEBUG ${CMAKE_CURRENT_BINARY_DIR}/lib/libpng16_staticd.lib
+                            IMPORTED_LOCATION_MINSIZEREL ${CMAKE_CURRENT_BINARY_DIR}/lib/libpng16_static.lib
+                            IMPORTED_LOCATION_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/lib/libpng16_static.lib
+                            IMPORTED_LOCATION_RELWITHDEBINFO ${CMAKE_CURRENT_BINARY_DIR}/lib/libpng16_static.lib
+                            LINKER_LANGUAGE C)
+    else()
+        set_target_properties(libpng PROPERTIES
+                            IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/lib/png16_static.a
+                          LINKER_LANGUAGE C)
+    endif()
+    
+    
+    #list (APPEND skia_dependecies external_libpng)
+    list (APPEND libs libpng)
+else()
+    list (APPEND private_includes ${PNG_INCLUDE_DIRS})
+    list (APPEND libs             ${PNG_LIBRARIES})
+endif()
+
+add_definitions(-DPNG_SKIP_SETJMP_CHECK)
+add_definitions(-DPNG_SKIP_SKIA_OPTS)
+add_definitions(-DSK_CODEC_DECODES_PNG)
 
 if (WEBP_INCLUDE_DIRS AND WEBP_LIBRARIES)
     list (APPEND private_includes ${WEBP_INCLUDE_DIRS})
@@ -307,15 +354,15 @@ else()
 endif()
 
 if (WIN32)
-    list (APPEND libs FontSub.lib Usp10.lib)
+    list (APPEND libs FontSub.lib Usp10.lib gdi32.lib)
 endif()
 
 find_package(OpenGL REQUIRED)
 list (APPEND libs  ${OPENGL_LIBRARIES})
 
-add_definitions(-DSK_SUPPORT_LEGACY_PATHEFFECT_PTR)
-add_definitions(-DSK_SUPPORT_LEGACY_MASKFILTER_PTR)
-add_definitions(-DSK_SUPPORT_LEGACY_MINOR_EFFECT_PTR)
+#add_definitions(-DSK_SUPPORT_LEGACY_PATHEFFECT_PTR)
+#add_definitions(-DSK_SUPPORT_LEGACY_MASKFILTER_PTR)
+#add_definitions(-DSK_SUPPORT_LEGACY_MINOR_EFFECT_PTR)
 
 
 # This is our main output, libskia.so.
@@ -333,7 +380,8 @@ set_target_properties(skia PROPERTIES LINKER_LANGUAGE CXX)
 
 target_compile_definitions(skia
     PUBLIC  ${public_defines}
-    PRIVATE -DSKIA_DLL -DSKIA_IMPLEMENTATION=1)
+    PRIVATE -DSKIA_DLL -DSKIA_IMPLEMENTATION=1
+)
 
 target_include_directories(skia
     PUBLIC  ${public_includes}
@@ -375,11 +423,13 @@ if (CMAKE_BUILD_TYPE STREQUAL Release)
 else()
     set (SK_RELEASE 0)
 endif()
+
 if (UNIX AND NOT APPLE)
   set (SK_SAMPLES_FOR_X 1)
 else()
   set (SK_SAMPLES_FOR_X 0)
 endif()
+
 configure_file ("SkUserConfig.h.in" "${userconfig_directory}/SkUserConfig.h")
 
 # skia_link_arguments.txt
@@ -429,42 +479,42 @@ file(APPEND ${skia_h_path} "\n#endif  // skia_DEFINED\n")
 
 # Now build a simple example app that uses Skia via libskia.so.
 add_executable(example example.cpp)
-add_dependencies(example skia)
+#add_dependencies(example skia)
 target_link_libraries(example skia ${OPENGL_LIBRARIES})
 
 # Now build a experimental app
-file (GLOB_RECURSE pdfView ../experimental/PdfViewer/*.cpp)
+#file (GLOB_RECURSE pdfView ../experimental/PdfViewer/*.cpp)
 
 
-add_executable(pdf2bmp ${pdfView} 
-    ../src/core/SkOpts.cpp
-    ../src/opts/SkOpts_ssse3.cpp
-    ../src/opts/SkOpts_sse41.cpp
-    ../src/core/SkHalf.cpp 
-    ../src/core/SkTSearch.cpp 
-    ../src/core/SkChunkAlloc.cpp 
-    ../src/core/SkUtils.cpp
-    ../src/codec/SkCodecImageGenerator.cpp
-    ../src/codec/SkCodec.cpp
-    ../src/codec/SkSampler.cpp
-    ../src/codec/SkMasks.cpp 
-    ../src/codec/SkSwizzler.cpp
-    ../src/codec/SkMaskSwizzler.cpp 
-    ../src/codec/SkBmpCodec.cpp
-    ../src/codec/SkBmpMaskCodec.cpp
-    ../src/codec/SkBmpRLECodec.cpp
-    ../src/codec/SkBmpStandardCodec.cpp
-    ../src/codec/SkWbmpCodec.cpp 
-)
+#add_executable(pdf2bmp ${pdfView} 
+#    ../src/core/SkOpts.cpp
+#    ../src/opts/SkOpts_ssse3.cpp
+#    ../src/opts/SkOpts_sse41.cpp
+#    ../src/core/SkHalf.cpp 
+#    ../src/core/SkTSearch.cpp 
+#    ../src/core/SkChunkAlloc.cpp 
+#    ../src/core/SkUtils.cpp
+#    ../src/codec/SkCodecImageGenerator.cpp
+#    ../src/codec/SkCodec.cpp
+#    ../src/codec/SkSampler.cpp
+#    ../src/codec/SkMasks.cpp 
+#    ../src/codec/SkSwizzler.cpp
+#    ../src/codec/SkMaskSwizzler.cpp 
+#    ../src/codec/SkBmpCodec.cpp
+#    ../src/codec/SkBmpMaskCodec.cpp
+#    ../src/codec/SkBmpRLECodec.cpp
+#    ../src/codec/SkBmpStandardCodec.cpp
+#    ../src/codec/SkWbmpCodec.cpp 
+#)
     
-add_dependencies(pdf2bmp skia)
-target_include_directories(pdf2bmp PRIVATE
-    ../experimental/PdfViewer
-    ../experimental/PdfViewer/inc
-    ../experimental/PdfViewer/src
-    ../experimental/PdfViewer/pdfparser
-    ../experimental/PdfViewer/pdfparser/native
-    ../experimental/PdfViewer/pdfparser/native/pdfapi
-    ${private_includes}
-    )
-target_link_libraries(pdf2bmp skia)
+#add_dependencies(pdf2bmp skia)
+#target_include_directories(pdf2bmp PRIVATE
+#    ../experimental/PdfViewer
+#    ../experimental/PdfViewer/inc
+#    ../experimental/PdfViewer/src
+#    ../experimental/PdfViewer/pdfparser
+#    ../experimental/PdfViewer/pdfparser/native
+#    ../experimental/PdfViewer/pdfparser/native/pdfapi
+#    ${private_includes}
+#    )
+#target_link_libraries(pdf2bmp skia)
