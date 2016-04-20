@@ -345,7 +345,9 @@ private:
         return nullptr;
     }
 
-    GrBuffer* onCreateBuffer(size_t, GrBufferType, GrAccessPattern) override { return nullptr; }
+    GrBuffer* onCreateBuffer(size_t, GrBufferType, GrAccessPattern, const void*) override {
+        return nullptr;
+    }
 
     void onClear(GrRenderTarget*, const SkIRect& rect, GrColor color) override {}
 
@@ -370,7 +372,7 @@ private:
         return false;
     }
 
-    bool onTransferPixels(GrSurface* surface,
+    bool onTransferPixels(GrTexture* texture,
                           int left, int top, int width, int height,
                           GrPixelConfig config, GrBuffer* transferBuffer,
                           size_t offset, size_t rowBytes) override {

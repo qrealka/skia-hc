@@ -34,6 +34,9 @@
         'whitelist_typefaces',
       ],
       'conditions': [
+        ['skia_mesa and skia_os in ["linux", "mac"]',
+          { 'dependencies': [ 'fiddle_build_test' ] }
+        ],
         ['skia_shared_lib',
           {
             'dependencies': [
@@ -348,6 +351,9 @@
         '../tools/picture_utils.cpp',
         '../tools/picture_utils.h',
       ],
+	  'include_dirs': [
+          '../src/core/',
+      ],
       'dependencies': [
         'skia_lib.gyp:skia_lib',
       ],
@@ -583,6 +589,36 @@
               'flags.gyp:flags',
               'skia_lib.gyp:skia_lib',
               'resources',
+            ],
+          },
+        ],
+      },
+    ],
+    ['skia_mesa and skia_os in ["linux", "mac"]',
+      {
+        'targets': [
+          {
+            'target_name': 'fiddle_build_test',
+            'type': 'executable',
+            'sources': [
+              '../tools/fiddle/draw.cpp',
+              '../tools/fiddle/fiddle_main.cpp',
+              '../tools/fiddle/fiddle_main.h',
+            ],
+            'dependencies': [
+              'skia_lib.gyp:skia_lib',
+              'pdf.gyp:pdf',
+            ],
+            'defines': [ 'FIDDLE_BUILD_TEST' ],
+            'conditions': [
+              [ 'skia_os == "mac"',
+                {
+                  'link_settings': { 'libraries': [ '/opt/X11/lib/libOSMesa.dylib', ], },
+                  'include_dirs': [ '/opt/X11/include/', ],
+                }, {
+                  'link_settings': { 'libraries': [ '-lOSMesa' ], },
+                }
+              ],
             ],
           },
         ],

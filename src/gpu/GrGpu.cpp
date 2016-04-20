@@ -236,9 +236,9 @@ GrRenderTarget* GrGpu::wrapBackendTextureAsRenderTarget(const GrBackendTextureDe
 }
 
 GrBuffer* GrGpu::createBuffer(size_t size, GrBufferType intendedType,
-                              GrAccessPattern accessPattern) {
+                              GrAccessPattern accessPattern, const void* data) {
     this->handleDirtyContext();
-    GrBuffer* buffer = this->onCreateBuffer(size, intendedType, accessPattern);
+    GrBuffer* buffer = this->onCreateBuffer(size, intendedType, accessPattern, data);
     if (!this->caps()->reuseScratchBuffers()) {
         buffer->resourcePriv().removeScratchKey();
     }
@@ -397,14 +397,14 @@ bool GrGpu::writePixels(GrSurface* surface,
     return this->writePixels(surface, left, top, width, height, config, texels);
 }
 
-bool GrGpu::transferPixels(GrSurface* surface,
+bool GrGpu::transferPixels(GrTexture* texture,
                            int left, int top, int width, int height,
                            GrPixelConfig config, GrBuffer* transferBuffer,
                            size_t offset, size_t rowBytes) {
     SkASSERT(transferBuffer);
 
     this->handleDirtyContext();
-    if (this->onTransferPixels(surface, left, top, width, height, config,
+    if (this->onTransferPixels(texture, left, top, width, height, config,
                                transferBuffer, offset, rowBytes)) {
         fStats.incTransfersToTexture();
         return true;

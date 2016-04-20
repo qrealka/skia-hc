@@ -7,10 +7,21 @@
 #ifndef fiddle_main_DEFINED
 #define fiddle_main_DEFINED
 
-#include "skia.h"
+#ifdef FIDDLE_BUILD_TEST
+    #include "GrContext.h"
+    #include "SkCanvas.h"
+    #include "SkDocument.h"
+    #include "SkPictureRecorder.h"
+    #include "SkStream.h"
+    #include "SkSurface.h"
+    #include "gl/GrGLAssembleInterface.h"
+    #include "gl/GrGLInterface.h"
+#else
+    #include "skia.h"
+#endif
 
 extern SkBitmap source;
-extern SkImage* image;
+extern sk_sp<SkImage> image;
 
 struct DrawOptions {
     DrawOptions(int w, int h, bool r, bool g, bool p, bool k, const char* s)

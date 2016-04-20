@@ -132,7 +132,8 @@ private:
                                          GrGpuResource::LifeCycle lifeCycle,
                                          const SkTArray<GrMipLevel>& texels) override;
 
-    GrBuffer* onCreateBuffer(size_t size, GrBufferType intendedType, GrAccessPattern) override;
+    GrBuffer* onCreateBuffer(size_t size, GrBufferType intendedType, GrAccessPattern,
+                             const void* data) override;
     GrTexture* onWrapBackendTexture(const GrBackendTextureDesc&, GrWrapOwnership) override;
     GrRenderTarget* onWrapBackendRenderTarget(const GrBackendRenderTargetDesc&,
                                               GrWrapOwnership) override;
@@ -183,7 +184,7 @@ private:
                        GrPixelConfig config,
                        const SkTArray<GrMipLevel>& texels) override;
 
-    bool onTransferPixels(GrSurface*,
+    bool onTransferPixels(GrTexture*,
                           int left, int top, int width, int height,
                           GrPixelConfig config, GrBuffer* transferBuffer,
                           size_t offset, size_t rowBytes) override;
