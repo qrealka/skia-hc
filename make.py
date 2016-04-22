@@ -102,9 +102,13 @@ def MakeWindows(targets):
         targets.remove(TARGET_GYP)
 
     # And call ninja to do the work!
+    out_dir = os.path.join(OUT_SUBDIR, BUILDTYPE)
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
     if targets:
         runcommand('ninja -C %s %s' % (
-            os.path.join(OUT_SUBDIR, BUILDTYPE), ' '.join(targets)))
+            out_dir, ' '.join(targets)))
 
 
 def Make(args):

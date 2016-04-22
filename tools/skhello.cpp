@@ -5,6 +5,9 @@
  * found in the LICENSE file.
  */
 
+#include <ostream>
+#include <fstream>
+
 #include "SkCanvas.h"
 #include "SkCommandLineFlags.h"
 #include "SkData.h"
@@ -15,6 +18,7 @@
 #include "SkImage.h"
 #include "SkStream.h"
 #include "SkString.h"
+#include <SkGradientShader.h>
 
 __SK_FORCE_IMAGE_DECODER_LINKING;
 
@@ -58,8 +62,50 @@ static bool do_document(int w, int h, const char path[], const char text[],
     return false;
 }
 
+// Most pointers returned by Skia are derived from SkRefCnt,
+// meaning we need to call ->unref() on them when done rather than delete them.
+template <typename T> std::shared_ptr<T> adopt(T* ptr) {
+	return std::shared_ptr<T>(ptr, [](T* p) { p->unref(); });
+}
+
+static void do_encode_test(int w, int h)
+{
+	SkSurfaceProps props(0, kUnknown_SkPixelGeometry);
+	sk_sp<SkSurface> surface(SkSurface::MakeRasterN32Premul(w, h, &props));
+
+	// Create a left-to-right green-to-purple gradient shader.
+	SkPoint pts[] = { {0, 0}, {SkIntToScalar(w), SkIntToScalar(h)} };
+	SkColor colors[] = { 0xFF00FF00, 0xFFFF00FF };
+
+	// Our text will draw with this paint: size 24, antialiased, with the shader.
+	SkPaint paint;
+	paint.setTextSize(24);
+	paint.setAntiAlias(true);
+	paint.setShader(SkGradientShader::MakeLinear(pts, colors, nullptr, 2, SkShader::kRepeat_TileMode));
+
+	// Draw to the surface via its SkCanvas.
+	SkCanvas* canvas = surface->getCanvas();   // We don't manage this pointer's lifetime.
+	static const char* msg = "Hello world!";
+	canvas->clear(SK_ColorWHITE);
+	canvas->drawText(msg, strlen(msg), 90, 120, paint);
+
+	// Grab a snapshot of the surface as an immutable SkImage.
+	sk_sp<SkImage> image = surface->makeImageSnapshot();
+	// Encode that image as a .png into a blob in memory.
+	std::shared_ptr<SkData> png = adopt(image->encode(SkImageEncoder::kPNG_Type, 100));
+
+	// This code is no longer Skia-specific.  We just dump the .png to disk.  Any way works.
+	static const char* path = "example.png";
+	std::ofstream(path, std::ios::out | std::ios::binary)
+		.write(static_cast<const char*>(png->data()), png->size());
+
+}
+
 int tool_main(int argc, char** argv);
 int tool_main(int argc, char** argv) {
+
+	do_encode_test(320, 240);
+
     SkCommandLineFlags::SetUsage("");
     SkCommandLineFlags::Parse(argc, argv);
 
