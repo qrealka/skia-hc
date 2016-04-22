@@ -14,8 +14,8 @@
       'target_name': 'alltargets',
       'type': 'none',
       'dependencies': [
-        'gyp/everything.gyp:everything',
-        'gyp/most.gyp:most',
+        'gyp/skia_lib.gyp:skia_lib',
+        'gyp/tools.gyp:skhello',
       ],
     },
   ],

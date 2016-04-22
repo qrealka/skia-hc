@@ -135,7 +135,7 @@ if __name__ == '__main__':
   args.extend(['-Goutput_dir=%s' % gyp_output_dir])
 
   # By default, we build 'most' instead of 'all' or 'everything'. See skia.gyp.
-  args.extend(['-Gdefault_target=most'])
+  args.extend(['-Gdefault_target=skia_lib'])
 
   # Fail if any files specified in the project are missing
   if sys.platform.startswith('win'):
