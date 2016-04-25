@@ -39,3 +39,4 @@ tools/skp/page_sets/data/*.wpr
 xcodebuild
 /!build
 /browse.VC.db
+/.vscode
