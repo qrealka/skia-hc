@@ -23,7 +23,7 @@ dpkg_all_installed() {
 
 if command -v lsb_release > /dev/null ; then
     case $(lsb_release -i -s) in
-        Ubuntu)
+        Ubuntu|LinuxMint)
             PACKAGES=$(cat<<-EOF
 		build-essential
 		libfreetype6-dev
