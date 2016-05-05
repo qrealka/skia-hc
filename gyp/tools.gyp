@@ -19,7 +19,6 @@
       'dependencies': [
         'chrome_fuzz',
         'dump_record',
-        'get_images_from_skps',
         'gpuveto',
         'imgblur',
         'imgslice',
@@ -260,21 +259,6 @@
       ],
       'include_dirs': [
         '../include/core',
-      ],
-      'dependencies': [
-        'flags.gyp:flags',
-        'skia_lib.gyp:skia_lib',
-      ],
-    },
-    {
-      'target_name': 'get_images_from_skps',
-      'type': 'executable',
-      'sources': [
-        '../tools/get_images_from_skps.cpp',
-      ],
-      'include_dirs': [
-        '../src/core',
-        '../include/private',
       ],
       'dependencies': [
         'flags.gyp:flags',
