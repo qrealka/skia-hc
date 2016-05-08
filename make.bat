@@ -19,7 +19,9 @@ exit /B %ERRORLEVEL%
 
 :setup_env_vars
 rem Visual Studio environment variables aren't set yet, so run vcvars32.bat
-if DEFINED VS110COMNTOOLS (
+if DEFINED VS120COMNTOOLS (
+    call "%VS120COMNTOOLS%..\..\VC\bin\vcvars32.bat"
+) else if DEFINED VS110COMNTOOLS (
     call "%VS110COMNTOOLS%..\..\VC\bin\vcvars32.bat"
 ) else if DEFINED VS100COMNTOOLS (
     call "%VS100COMNTOOLS%..\..\VC\bin\vcvars32.bat"
@@ -31,5 +33,5 @@ goto run_python
 
 :error_no_VS
 echo ERROR: Neither VS100COMNTOOLS nor VS110COMNTOOLS environment variable is set.
-echo Are you sure Visual Studio 2010 or 2012 is installed?
+echo Are you sure Visual Studio 2010 or 2012 or 2013 is installed?
 exit /B 1

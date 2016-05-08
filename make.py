@@ -22,7 +22,7 @@ BUILDTYPE = os.environ.get('BUILDTYPE', 'Debug')
 # special targets
 TARGET_ALL     = 'all'
 TARGET_CLEAN   = 'clean'
-TARGET_DEFAULT = 'most'
+TARGET_DEFAULT = 'skia_lib'
 TARGET_GYP     = 'gyp'
 
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -120,6 +120,8 @@ def Make(args):
     # handle any variable-setting parameters or special targets
     global BUILDTYPE
 
+    global OUT_SUBDIR
+
     # if no targets were specified at all, make default target
     if not args:
         args = [TARGET_DEFAULT]
@@ -131,14 +133,18 @@ def Make(args):
         # https://code.google.com/p/skia/issues/detail?id=932 ("gyp
         # automatically creates "all" target on some build flavors but not
         # others")
+        
         if arg == TARGET_ALL:
-            targets.append('everything')
+            targets.append('skia_lib')
         elif arg == TARGET_CLEAN:
             MakeClean()
         elif arg.startswith('BUILDTYPE='):
             BUILDTYPE = arg[10:]
         elif arg.startswith('GYP_DEFINES='):
             os.environ['GYP_DEFINES'] = arg[12:]
+        elif arg.startswith('SKIA_OUT='):
+            os.environ['SKIA_OUT'] = arg[9:]
+            OUT_SUBDIR = arg[9:]
         else:
             targets.append(arg)
 
